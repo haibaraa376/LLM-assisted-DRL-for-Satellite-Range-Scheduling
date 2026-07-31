@@ -1,0 +1,46 @@
+# Skyfield 数据层的固定运行参数；论文未公开的几何细节在此集中声明。
+time:
+  start_utc: "2025-01-01T00:00:00Z"
+  duration_seconds: 86400
+  step_seconds: 30
+  include_final_endpoint: true
+  interval: "[start,end)"
+orbit:
+  mode: raw_sgp4_elements
+  gravity_model: WGS72
+  operation_mode: improved
+  max_epoch_difference_days: 7
+geometry:
+  earth_radius_km: 6378.137
+  safety_margin_km: 0.0
+  tangent_is_blocked: true
+  atmospheric_refraction: false
+sgl:
+  minimum_elevation_deg: 10.0
+  use_find_events: true
+  require_positive_altitude: true
+isl:
+  maximum_range_enabled: false
+  undirected: true
+idl:
+  maximum_range_enabled: false
+  selection_rule: nearest_visible_in_each_other_domain
+  symmetrization: union
+  tie_break: lowest_satellite_id
+rates:
+  sgl_mbps: 60.0
+  isl_mbps: 80.0
+  idl_mbps: 80.0
+  sgl_bandwidth_hz: 80000000
+ground_station_calibration:
+  angle_model: enu_3d_pointing_angular_separation
+windows:
+  minimum_duration_seconds: 1
+  bridge_false_gaps_seconds: 0
+  inter_satellite_boundary: sample_grid_30s
+performance:
+  chunk_size_time: 512
+output:
+  directory: data/skyfield
+validation:
+  random_seed: 2025

@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "idl": true,
+    "isl": true,
+    "orbit_data": true,
+    "required_files": true,
+    "sgl": true,
+    "time_grid": true,
+    "windows": true
+  },
+  "failures": [],
+  "status": "PASS",
+  "warnings": []
+}

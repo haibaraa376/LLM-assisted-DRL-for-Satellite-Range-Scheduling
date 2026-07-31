@@ -1,0 +1,143 @@
+{
+  "IDL_statistics": {
+    "available_sample_count": 127662,
+    "window_count": 984
+  },
+  "ISL_statistics": {
+    "available_sample_count": 172860,
+    "window_count": 30
+  },
+  "SGL_statistics": {
+    "available_sample_count": 69499,
+    "window_count": 121
+  },
+  "ground_station_count": 4,
+  "per_ground_station_statistics": {
+    "gs01": {
+      "SGL_window_count": 29
+    },
+    "gs02": {
+      "SGL_window_count": 28
+    },
+    "gs03": {
+      "SGL_window_count": 32
+    },
+    "gs04": {
+      "SGL_window_count": 32
+    }
+  },
+  "per_satellite_statistics": {
+    "cs01": {
+      "IDL_window_count": 114,
+      "ISL_window_count": 4,
+      "SGL_window_count": 4
+    },
+    "cs02": {
+      "IDL_window_count": 146,
+      "ISL_window_count": 4,
+      "SGL_window_count": 4
+    },
+    "cs03": {
+      "IDL_window_count": 143,
+      "ISL_window_count": 4,
+      "SGL_window_count": 4
+    },
+    "cs04": {
+      "IDL_window_count": 138,
+      "ISL_window_count": 4,
+      "SGL_window_count": 4
+    },
+    "cs05": {
+      "IDL_window_count": 118,
+      "ISL_window_count": 4,
+      "SGL_window_count": 2
+    },
+    "ns01": {
+      "IDL_window_count": 72,
+      "ISL_window_count": 4,
+      "SGL_window_count": 4
+    },
+    "ns02": {
+      "IDL_window_count": 70,
+      "ISL_window_count": 4,
+      "SGL_window_count": 6
+    },
+    "ns03": {
+      "IDL_window_count": 71,
+      "ISL_window_count": 4,
+      "SGL_window_count": 9
+    },
+    "ns04": {
+      "IDL_window_count": 72,
+      "ISL_window_count": 4,
+      "SGL_window_count": 8
+    },
+    "ns05": {
+      "IDL_window_count": 70,
+      "ISL_window_count": 4,
+      "SGL_window_count": 4
+    },
+    "os01": {
+      "IDL_window_count": 173,
+      "ISL_window_count": 4,
+      "SGL_window_count": 14
+    },
+    "os02": {
+      "IDL_window_count": 202,
+      "ISL_window_count": 4,
+      "SGL_window_count": 14
+    },
+    "os03": {
+      "IDL_window_count": 202,
+      "ISL_window_count": 4,
+      "SGL_window_count": 14
+    },
+    "os04": {
+      "IDL_window_count": 203,
+      "ISL_window_count": 4,
+      "SGL_window_count": 15
+    },
+    "os05": {
+      "IDL_window_count": 174,
+      "ISL_window_count": 4,
+      "SGL_window_count": 15
+    }
+  },
+  "performance": {
+    "chunk_size_time": 512,
+    "data_status": "DEVELOPMENT_ONLY",
+    "peak_memory": "not_available_without_optional_psutil",
+    "stage_timings_seconds": {
+      "idl_seconds": 0.20827610000000019,
+      "isl_seconds": 0.01983210000000013,
+      "propagation_seconds": 0.19023659999999998,
+      "sgl_seconds": 0.13577589999999984,
+      "total_before_reporting_seconds": 1.2453932
+    }
+  },
+  "run_identity": {
+    "run_id": "rappo_skyfield_day1"
+  },
+  "satellite_counts_by_domain": {
+    "communication": 5,
+    "navigation": 5,
+    "observation": 5
+  },
+  "time_grid": {
+    "end_utc": "2025-01-02T00:00:00.000000Z",
+    "interval_convention": "[start,end)",
+    "sample_count": 2881,
+    "start_utc": "2025-01-01T00:00:00.000000Z",
+    "step_seconds": 30.0
+  },
+  "warnings": [
+    "Synthetic representative orbits/stations are reproduction choices, not paper-reported identities."
+  ],
+  "window_duration_quantiles": {
+    "0.0": 30.0,
+    "0.25": 150.0,
+    "0.5": 1260.0,
+    "0.75": 2550.0,
+    "1.0": 86400.0
+  }
+}

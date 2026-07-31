@@ -1,0 +1,15 @@
+# 任务数量、分布和生存时间未由论文公开，是供所有后续算法共同使用的复现补充设置。
+task_database:
+  database_size: 1000
+  generation_seed: 2025
+  split_seed: 2026
+  source_domain_id: D2
+  source_domain_name: observation
+  arrival: {mode: uniform_over_horizon, align_to_decision_grid: true, minimum_time_s: 0, maximum_time_s: 84600}
+  source_satellite: {distribution: uniform}
+  target_ground_station: {distribution: uniform}
+  priority: {minimum: 1, maximum: 10, distribution: uniform_integer}
+  survival_time_seconds: {priority_1_to_3: 21600, priority_4_to_6: 10800, priority_7_to_9: 3600, priority_10: 1800}
+  data_size_mbit: {distribution: log_uniform, minimum: 6000.0, maximum: 60000.0}
+  split: {train: 0.70, validation: 0.15, test: 0.15}
+episode: {default_split: train, task_count: 200, sample_without_replacement: true}

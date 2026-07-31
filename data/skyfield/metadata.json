@@ -1,0 +1,19 @@
+{
+  "config_files": [
+    "configs/skyfield.yaml",
+    "configs/constellation.yaml",
+    "configs/ground_stations.yaml"
+  ],
+  "duration_seconds": 86400,
+  "generated_at_utc": "2026-07-30T06:42:57.497759Z",
+  "ground_station_count": 4,
+  "interval": "[start,end)",
+  "python_version": "3.9.25",
+  "rates_mbps": {
+    "IDL": 80.0,
+    "ISL": 80.0,
+    "SGL": 60.0
+  },
+  "satellite_count": 15,
+  "step_seconds": 30
+}

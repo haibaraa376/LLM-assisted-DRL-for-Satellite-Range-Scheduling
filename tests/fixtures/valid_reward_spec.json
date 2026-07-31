@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "reward_name": "deadline_delivery_mock_v1",
+  "positive_weights": {
+    "sgl_progress": 1.2,
+    "relay_progress": 0.1,
+    "completion_score": 0.8,
+    "balance_score": 0.03
+  },
+  "penalty_weights": {
+    "expiration_loss": 0.9,
+    "invalid_action_rate": 0.08,
+    "coordination_conflict_rate": 0.05,
+    "relay_cost": 0.04
+  },
+  "rationale": "奖励最终下传与任务完成，抑制过期、冲突和循环中继。",
+  "expected_behavior": [
+    "提高SGL送达",
+    "降低任务过期",
+    "减少重复竞争"
+  ],
+  "risk_notes": [
+    "过高过期惩罚可能使早期策略偏保守"
+  ],
+  "parent_candidate_id": null
+}

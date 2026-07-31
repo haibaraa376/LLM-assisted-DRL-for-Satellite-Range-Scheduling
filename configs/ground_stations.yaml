@@ -1,0 +1,25 @@
+ground_stations:
+  - id: "gs01"
+    name: "IGS BJFS00CHN (Fangshan)"
+    latitude_deg: 39.608625
+    longitude_deg: 115.892461
+    elevation_m: 87.413
+    antenna_rotation_speed_deg_per_second: 3.0
+  - id: "gs02"
+    name: "IGS WUHN00CHN (Wuhan)"
+    latitude_deg: 30.531653
+    longitude_deg: 114.357261
+    elevation_m: 28.2
+    antenna_rotation_speed_deg_per_second: 3.0
+  - id: "gs03"
+    name: "IGS URUM00CHN (Urumqi)"
+    latitude_deg: 43.807950
+    longitude_deg: 87.600672
+    elevation_m: 858.9
+    antenna_rotation_speed_deg_per_second: 3.0
+  - id: "gs04"
+    name: "IGS LHAZ00CHN (Lhasa)"
+    latitude_deg: 29.657331
+    longitude_deg: 91.104031
+    elevation_m: 3624.7083
+    antenna_rotation_speed_deg_per_second: 3.0

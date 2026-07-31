@@ -1,0 +1,287 @@
+[
+  {
+    "domain_id": "D1",
+    "domain_name": "communication",
+    "element_epoch_delta_days": 0.0,
+    "id": "cs01",
+    "numeric_satnum": 10001,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.0001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 0.1,
+      "mean_anomaly_deg": 180.9,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.0027395241,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D1",
+    "domain_name": "communication",
+    "element_epoch_delta_days": 0.0,
+    "id": "cs02",
+    "numeric_satnum": 10002,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.0001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 0.1,
+      "mean_anomaly_deg": 200.9,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.0027395241,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D1",
+    "domain_name": "communication",
+    "element_epoch_delta_days": 0.0,
+    "id": "cs03",
+    "numeric_satnum": 10003,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.0001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 0.1,
+      "mean_anomaly_deg": 220.9,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.0027395241,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D1",
+    "domain_name": "communication",
+    "element_epoch_delta_days": 0.0,
+    "id": "cs04",
+    "numeric_satnum": 10004,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.0001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 0.1,
+      "mean_anomaly_deg": 240.9,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.0027395241,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D1",
+    "domain_name": "communication",
+    "element_epoch_delta_days": 0.0,
+    "id": "cs05",
+    "numeric_satnum": 10005,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.0001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 0.1,
+      "mean_anomaly_deg": 260.9,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.0027395241,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D2",
+    "domain_name": "observation",
+    "element_epoch_delta_days": 0.0,
+    "id": "os01",
+    "numeric_satnum": 20001,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 98.2,
+      "mean_anomaly_deg": 0.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 14.5634575518,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D2",
+    "domain_name": "observation",
+    "element_epoch_delta_days": 0.0,
+    "id": "os02",
+    "numeric_satnum": 20002,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 98.2,
+      "mean_anomaly_deg": 8.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 14.5634575518,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D2",
+    "domain_name": "observation",
+    "element_epoch_delta_days": 0.0,
+    "id": "os03",
+    "numeric_satnum": 20003,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 98.2,
+      "mean_anomaly_deg": 16.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 14.5634575518,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D2",
+    "domain_name": "observation",
+    "element_epoch_delta_days": 0.0,
+    "id": "os04",
+    "numeric_satnum": 20004,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 98.2,
+      "mean_anomaly_deg": 24.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 14.5634575518,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D2",
+    "domain_name": "observation",
+    "element_epoch_delta_days": 0.0,
+    "id": "os05",
+    "numeric_satnum": 20005,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 98.2,
+      "mean_anomaly_deg": 32.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 14.5634575518,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D3",
+    "domain_name": "navigation",
+    "element_epoch_delta_days": 0.0,
+    "id": "ns01",
+    "numeric_satnum": 30001,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 55.0,
+      "mean_anomaly_deg": 0.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.8651223878,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D3",
+    "domain_name": "navigation",
+    "element_epoch_delta_days": 0.0,
+    "id": "ns02",
+    "numeric_satnum": 30002,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 55.0,
+      "mean_anomaly_deg": 72.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.8651223878,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D3",
+    "domain_name": "navigation",
+    "element_epoch_delta_days": 0.0,
+    "id": "ns03",
+    "numeric_satnum": 30003,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 55.0,
+      "mean_anomaly_deg": 144.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.8651223878,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D3",
+    "domain_name": "navigation",
+    "element_epoch_delta_days": 0.0,
+    "id": "ns04",
+    "numeric_satnum": 30004,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 55.0,
+      "mean_anomaly_deg": 216.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.8651223878,
+      "raan_deg": 0.0
+    }
+  },
+  {
+    "domain_id": "D3",
+    "domain_name": "navigation",
+    "element_epoch_delta_days": 0.0,
+    "id": "ns05",
+    "numeric_satnum": 30005,
+    "orbital_elements": {
+      "argument_of_perigee_deg": 0.0,
+      "bstar": 0.0,
+      "eccentricity": 0.001,
+      "epoch_utc": "2025-01-01T00:00:00Z",
+      "inclination_deg": 55.0,
+      "mean_anomaly_deg": 288.0,
+      "mean_motion_ddot_rev_per_day3": 0.0,
+      "mean_motion_dot_rev_per_day2": 0.0,
+      "mean_motion_rev_per_day": 1.8651223878,
+      "raan_deg": 0.0
+    }
+  }
+]

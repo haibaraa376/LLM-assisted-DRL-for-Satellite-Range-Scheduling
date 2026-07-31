@@ -1,0 +1,49 @@
+# 15星、4站、24小时和固定速率来自论文；以下环境细节是统一复现补充设置。
+environment:
+  name: CrossDomainSatelliteRangeSchedulingEnv
+  horizon_seconds: 86400
+  decision_step_seconds: 30
+  interval_convention: "[start,end)"
+  agent_type: satellite
+  agent_count: 15
+  observation: {format: structured, include_global_metrics_in_local_observation: true}
+  action:
+    format: composite
+    candidate_task_count: 4
+    max_subactions_per_satellite: 4
+    transmission_ratio_min: 0.0
+    transmission_ratio_max: 1.0
+    start_offset_min: 0.0
+    start_offset_max: 1.0
+    missing_action_as_idle: true
+    clip_continuous_values: true
+  transmission: {allow_partial_transmission: true, allow_multi_step_completion: true, allow_isl_relay: true, allow_idl_relay: true, allow_direct_sgl: true, duplicate_data: false, target_ground_station_must_match_task: true}
+  # 论文只明确每颗卫星每时隙最多一条SGL。以下3个星间接口、任务与物理
+  # 链路唯一性、禁止同槽即时转发，均是本复现对并发语义的补充约定。
+  concurrency:
+    max_outgoing_inter_satellite_links_per_satellite_per_slot: 3
+    max_sgl_links_per_satellite_per_slot: 1
+    max_transmissions_per_task_per_slot: 1
+    max_tasks_per_physical_inter_satellite_link_per_slot: 1
+    same_slot_forwarding: false
+  resources:
+    inter_satellite_interface_count: 3
+    sgl_interface_count: 1
+    ground_station_antenna_count: 1
+    inter_and_sgl_interfaces_are_independent: true
+    count_transmit_and_receive_inter_satellite_interfaces: true
+    allow_opposite_direction_same_physical_link: false
+  conflict_resolution:
+    deterministic: true
+    order:
+      - requested_start_time_ascending
+      - task_priority_descending
+      - task_expiration_ascending
+      - source_satellite_id_ascending
+      - task_id_ascending
+      - target_id_ascending
+  constraints: {window_start: true, window_end: true, task_lifetime_start: true, ground_station_calibration: true, source_must_hold_data: true, no_resource_overlap: true}
+  task_lifetime: {require_start_not_before_arrival: true, require_start_not_after_expiration: true, require_completion_before_expiration: false}
+  metrics: {timeliness: {enabled: true, formula: paper_equation_9_10}, load_balance: {enabled: true, formula: corrected_equation_11, correction: replace_mean_1_minus_U_with_mean_U, b_max: 1.0, task_scope: arrived_tasks, report_mean_per_task: true}}
+  numerical: {data_tolerance_mbit: 1.0e-6, time_tolerance_seconds: 1.0e-9, ratio_tolerance: 1.0e-9}
+  random_seed: 2025

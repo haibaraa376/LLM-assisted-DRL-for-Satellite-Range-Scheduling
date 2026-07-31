@@ -1,0 +1,34 @@
+[
+  {
+    "antenna_rotation_speed_deg_per_second": 3.0,
+    "elevation_m": 87.413,
+    "id": "gs01",
+    "latitude_deg": 39.608625,
+    "longitude_deg": 115.892461,
+    "name": "IGS BJFS00CHN (Fangshan)"
+  },
+  {
+    "antenna_rotation_speed_deg_per_second": 3.0,
+    "elevation_m": 28.2,
+    "id": "gs02",
+    "latitude_deg": 30.531653,
+    "longitude_deg": 114.357261,
+    "name": "IGS WUHN00CHN (Wuhan)"
+  },
+  {
+    "antenna_rotation_speed_deg_per_second": 3.0,
+    "elevation_m": 858.9,
+    "id": "gs03",
+    "latitude_deg": 43.80795,
+    "longitude_deg": 87.600672,
+    "name": "IGS URUM00CHN (Urumqi)"
+  },
+  {
+    "antenna_rotation_speed_deg_per_second": 3.0,
+    "elevation_m": 3624.7083,
+    "id": "gs04",
+    "latitude_deg": 29.657331,
+    "longitude_deg": 91.104031,
+    "name": "IGS LHAZ00CHN (Lhasa)"
+  }
+]

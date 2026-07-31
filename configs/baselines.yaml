@@ -1,0 +1,89 @@
+baselines:
+  seed: 2025
+  device: auto
+
+  methods:
+    manual_mappo:
+      enabled: true
+      implementation: existing
+
+    # PPO-Lya的势函数形式和参数是复现补充设置，不是论文公开参数。
+    ppo_lya:
+      enabled: true
+      base_reward: manual_reward
+      lyapunov:
+        gamma: 0.99
+        shaping_coefficient: 0.20
+        feature_weights:
+          backlog: 0.50
+          expiration_risk: 0.40
+          utilization_imbalance: 0.10
+        urgency_power: 2.0
+        numerical_tolerance: 1.0e-9
+        hard_failure_abs_shaping: 5.0
+
+    # LLM-PPO使用DeepSeek替代论文中的LLM，不使用RAG。
+    # DeepSeek只生成八项奖励权重JSON，不接触环境，也不生成可执行代码。
+    llm_ppo:
+      enabled: true
+      provider:
+        default: mock
+        live_provider: deepseek
+        api_key_env: DEEPSEEK_API_KEY
+        base_url: https://api.deepseek.com
+        model: deepseek-v4-pro
+        thinking_enabled: true
+        reasoning_effort: high
+        max_tokens: 2500
+        timeout_seconds: 120
+        max_retries: 2
+        retry_delays_seconds: [2, 5]
+      output:
+        mode: reward_weights_json
+        allow_arbitrary_python: false
+        require_json_output: true
+        reject_unknown_fields: true
+      weight_limits:
+        minimum: 0.0
+        maximum: 3.0
+      selected_reward_spec_path: results/baselines/reward_specs/selected_reward_spec.json
+
+      # 默认搜索规模只用于验证安全、公平的候选流水线，不代表正式实验预算。
+      search:
+        rounds: 1
+        candidates_per_round: 2
+        candidate_training_episodes: 1
+        candidate_task_count: 200
+        common_training_seeds: [2025]
+        validation_seeds: [3025, 3026, 3027]
+        validation_task_count: 100
+        maximum_api_calls: 4
+        maximum_total_input_tokens: 100000
+        maximum_total_output_tokens: 20000
+      cache:
+        enabled: true
+        directory: results/baselines/llm_search/api_calls
+
+  # 三种方法共享训练预算、任务划分和验证场景；test本阶段禁止使用。
+  training:
+    split: train
+    task_count: 200
+    episode_count: 5
+    rollout_steps: 64
+    validation_interval_episodes: 1
+    validation:
+      split: validation
+      task_count: 100
+      seeds: [3025, 3026, 3027]
+      deterministic: true
+
+  best_model_rule:
+    primary_metric: timeliness_raw_mean
+    secondary_metric: load_balance_mean_per_task_mean
+    primary_tolerance: 1.0e-6
+
+  output:
+    root: results/baselines
+    runs_directory: results/baselines/runs
+    reward_specs_directory: results/baselines/reward_specs
+    llm_search_directory: results/baselines/llm_search

@@ -1,0 +1,173 @@
+# Actor学习率1e-4、Critic学习率1e-3和折扣因子0.99来自论文实验设置。
+# GAE、PPO裁剪、网络规模、Top-4任务槽、目标槽设计和冒烟长度是复现补充设置。
+# 下方及时性增量奖励只用于验证MAPPO链路，诊断结果不是论文正式实验结果。
+mappo:
+  seed: 2025
+  device: auto
+  dtype: float32
+
+  agents:
+    count: 15
+    shared_actor: true
+    centralized_critic: true
+
+  encoding:
+    candidate_task_count: 4
+    satellite_target_count: 15
+    ground_station_target_count: 4
+    target_slot_count: 19
+    target_choice_count_with_idle: 20
+    identity_dim: 7
+    self_state_dim: 3
+    task_feature_dim: 8
+    target_feature_dim: 9
+    expected_actor_observation_dim: 213
+    global_extra_dim: 5
+    expected_critic_state_dim: 3200
+    task_order:
+      - expiration_time_ascending
+      - priority_descending
+      - held_data_descending
+      - task_id_ascending
+    target_order:
+      - all_satellites_in_dataset_order
+      - all_ground_stations_in_dataset_order
+    normalization:
+      max_priority: 10.0
+      max_task_lifetime_s: 21600.0
+      max_task_size_mbit: 60000.0
+      horizon_s: 86400.0
+      max_slot_capacity_mbit: 2400.0
+      distance_reference: dataset_max_finite_distance
+      clip_features_to_unit_interval: true
+
+  actor:
+    hidden_sizes: [256, 256]
+    activation: tanh
+    orthogonal_initialization: true
+    output_gain: 0.01
+    continuous_log_std_initial: -0.5
+    continuous_log_std_min: -5.0
+    continuous_log_std_max: 1.0
+
+  critic:
+    hidden_sizes: [512, 256]
+    activation: tanh
+    orthogonal_initialization: true
+    output_gain: 1.0
+
+  algorithm:
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_ratio: 0.2
+    value_clip: 0.2
+    actor_learning_rate: 1.0e-4
+    critic_learning_rate: 1.0e-3
+    actor_epochs: 5
+    critic_epochs: 5
+    actor_minibatch_size: 256
+    critic_minibatch_size: 64
+    entropy_coefficient: 0.01
+    value_loss_coefficient: 1.0
+    max_gradient_norm: 0.5
+    normalize_advantages: true
+    target_kl: 0.03
+
+  rollout:
+    steps_per_update: 64
+    bootstrap_at_rollout_end: true
+
+  diagnostic_reward:
+    enabled: true
+    mode: timeliness_delta
+    timeliness_scale: 10.0
+    shared_global_reward: true
+
+  # 以下人工奖励权重不是论文公开参数，而是本复现的人工MAPPO基线设置。
+  manual_reward:
+    enabled: true
+    shared_global_reward: true
+    weights:
+      sgl_progress: 1.00
+      relay_progress: 0.15
+      completion: 0.50
+      balance: 0.05
+      expiration: 0.50
+      invalid_action: 0.10
+      coordination_conflict: 0.03
+      relay_cost: 0.02
+    normalization:
+      max_priority: 10.0
+      sgl_parallel_reference: 4.0
+      relay_parallel_reference: 45.0
+      completion_parallel_reference: 4.0
+      expiration_parallel_reference: 4.0
+      balance_epsilon: 0.05
+    numerical:
+      tolerance: 1.0e-9
+      warning_abs_reward: 2.0
+      hard_failure_abs_reward: 10.0
+    invalid_violation_codes:
+      - INVALID_TASK
+      - TASK_NOT_ARRIVED
+      - TASK_EXPIRED
+      - TASK_COMPLETED
+      - SOURCE_HAS_NO_DATA
+      - INVALID_TARGET
+      - TARGET_GROUND_STATION_MISMATCH
+      - LINK_NOT_AVAILABLE
+      - START_BEFORE_WINDOW
+      - START_AT_OR_AFTER_SLOT_END
+      - END_AFTER_WINDOW
+      - ZERO_REQUESTED_DATA
+      - ZERO_FEASIBLE_CAPACITY
+      - SAME_SLOT_FORWARDING_NOT_ALLOWED
+    coordination_violation_codes:
+      - INTER_SATELLITE_OUTGOING_LIMIT_EXCEEDED
+      - SGL_PER_SLOT_LIMIT_EXCEEDED
+      - TASK_ALREADY_SCHEDULED_THIS_SLOT
+      - PHYSICAL_LINK_ALREADY_USED_THIS_SLOT
+      - INTER_SATELLITE_INTERFACE_CAPACITY_EXCEEDED
+      - GROUND_STATION_RESOURCE_CONFLICT
+      - CALIBRATION_TIME_INSUFFICIENT
+      - DUPLICATE_TASK_IN_COMPOSITE_ACTION
+      - DUPLICATE_TARGET_LINK_IN_COMPOSITE_ACTION
+
+  # 训练只使用train；固定validation仅用于模型选择，test留给最终论文实验。
+  # 默认5个完整Episode是流程验收规模，不代表最终训练预算；CLI可增加总数。
+  manual_training:
+    split: train
+    task_count: 200
+    base_episode_seed: 2025
+    episode_count: 5
+    rollout_steps_per_update: 64
+    validation_interval_episodes: 1
+    checkpoint_interval_episodes: 1
+    validation:
+      split: validation
+      task_count: 100
+      seeds: [3025, 3026, 3027]
+      deterministic: true
+    checkpoint:
+      best_path: results/day3/manual_reward_mappo/best_checkpoint.pt
+      last_path: results/day3/manual_reward_mappo/last_checkpoint.pt
+      save_at_episode_boundary_only: true
+    logging:
+      update_log_path: results/day3/manual_reward_mappo/train_updates.jsonl
+      episode_log_path: results/day3/manual_reward_mappo/episodes.jsonl
+      validation_log_path: results/day3/manual_reward_mappo/validation.jsonl
+      summary_path: results/day3/manual_reward_mappo/summary.json
+    best_model_rule:
+      primary_metric: timeliness_raw_mean
+      secondary_metric: load_balance_mean_per_task_mean
+      primary_tolerance: 1.0e-6
+
+  smoke_training:
+    split: validation
+    task_count: 20
+    update_count: 2
+    deterministic_evaluation_steps: 16
+    save_checkpoint: true
+    checkpoint_path: results/day3/smoke_checkpoint.pt
+    log_path: results/day3/smoke_training.jsonl
+    summary_path: results/day3/smoke_summary.json

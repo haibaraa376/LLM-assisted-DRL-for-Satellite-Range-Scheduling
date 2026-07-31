@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rappo-orbit-data"
+version = "0.1.0"
+description = "RAPPO复现项目的Skyfield轨道与链路数据层"
+requires-python = ">=3.9,<3.10"
+dependencies = [
+  "numpy==2.0.1",
+  "PyYAML==6.0.2",
+  "matplotlib==3.9.4",
+  "skyfield==1.54",
+  "sgp4==2.25",
+  "torch==2.5.1",
+  "openai==2.48.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.3.5"]
+
+[project.scripts]
+rappo-orbit-data = "orbit_data.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"

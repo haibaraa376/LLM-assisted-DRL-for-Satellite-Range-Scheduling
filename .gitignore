@@ -1,0 +1,61 @@
+# Python 字节码与解释器缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 测试、覆盖率和静态分析缓存
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# 构建与安装产物
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# 虚拟环境与 Conda 本地环境
+.venv/
+venv/
+env/
+.conda/
+conda-meta/
+
+# 编辑器和操作系统文件
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 本地密钥、环境变量和临时文件
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# 训练、评估、Checkpoint 和 API 缓存均为本地运行产物
+results/
+checkpoints/
+runs/
+wandb/
+tensorboard/
+
+# 本地日志
+*.log
+logs/
+
+docs/
+paper/
