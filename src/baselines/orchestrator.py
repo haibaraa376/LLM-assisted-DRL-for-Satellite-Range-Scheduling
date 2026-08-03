@@ -248,6 +248,8 @@ class BaselineOrchestrator:
                 run_directory,
                 methods,
                 manifest["method_states"],
+                self.baseline_config["best_model_rule"]["metrics"],
+                "checkpoint_selection",
             )
             summary = {
                 "schema_version": "1.0",
@@ -320,6 +322,11 @@ class BaselineOrchestrator:
             ),
             best_episode_index=(
                 checkpoint_state.get("best_episode_index")
+                if checkpoint_state
+                else None
+            ),
+            best_validation_details=(
+                checkpoint_state.get("best_validation_details")
                 if checkpoint_state
                 else None
             ),

@@ -1,0 +1,65 @@
+rappo:
+  enabled: true
+  knowledge_base:
+    root: knowledge_sources
+    source_register: knowledge_sources/source_register.jsonl
+    documents: knowledge_sources/processed/documents.jsonl
+    chunks: knowledge_sources/processed/chunks.jsonl
+    index_directory: knowledge_sources/index
+    include_categories: [satellite_scheduling, reward_shaping]
+    exclude_categories: [implementation_reference]
+    excluded_document_ids: [RS-01, RS-06]
+  cleaning:
+    remove_references: true
+    retain_appendices_after_references: true
+    remove_acknowledgments: true
+    remove_funding: true
+    remove_declarations: true
+    remove_author_contributions: true
+    remove_data_availability: true
+    remove_repeated_headers_footers: true
+  chunking:
+    method: character
+    chunk_size: 1024
+    chunk_overlap: 128
+    minimum_chunk_size: 200
+    prefer_sentence_boundary: true
+    minimum_quality_score: 0.55
+  embedding:
+    model_name: microsoft/codebert-base
+    revision: null
+    max_length: 512
+    pooling: attention_mask_mean
+    normalize_l2: true
+    batch_size: 16
+    device: auto
+    dtype: float32
+    corpus_mean_centering: true
+  retrieval:
+    top_k: 5
+    similarity: cosine
+    stable_tie_breaker: chunk_id
+    cache_queries: true
+    candidate_pool_size: 30
+    dense_weight: 0.85
+    keyword_weight: 0.10
+    quality_weight: 0.05
+    mmr_enabled: true
+    mmr_lambda: 0.85
+    max_chunks_per_document: 2
+    cjk_query_expansion: true
+  self_check:
+    enabled: true
+    minimum_unique_documents_per_query: 3
+    maximum_chunk_query_frequency: 0.50
+    maximum_document_result_share: 0.35
+    maximum_mean_top5_jaccard: 0.55
+  prompt:
+    include_source_ids: true
+    include_similarity_scores: true
+    treat_retrieved_text_as_untrusted: true
+  output:
+    root: results/rappo
+    retrieval_audit_directory: results/rappo/retrievals
+    search_directory: results/rappo/search
+    reward_spec_directory: results/rappo/reward_specs

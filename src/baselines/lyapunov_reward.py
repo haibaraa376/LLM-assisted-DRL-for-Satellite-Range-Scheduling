@@ -15,6 +15,7 @@ class LyapunovFeatures:
 
     backlog: float
     expiration_risk: float
+    expired_undelivered: float
     utilization_imbalance: float
 
     def __post_init__(self):
@@ -32,15 +33,18 @@ class LyapunovBreakdown:
     current_potential: float
     shaping_reward: float
     manual_reward: float
+    manual_components: dict
     total_reward: float
 
     def component_values(self):
         """返回统一训练日志要求的标量分量。"""
         return {
+            **self.manual_components,
             "manual_reward": self.manual_reward,
             "lyapunov_shaping": self.shaping_reward,
             "backlog": self.current_features.backlog,
             "expiration_risk": self.current_features.expiration_risk,
+            "expired_undelivered": self.current_features.expired_undelivered,
             "utilization_imbalance": (
                 self.current_features.utilization_imbalance
             ),
@@ -52,6 +56,7 @@ class LyapunovBreakdown:
 
 def extract_lyapunov_features(environment, config):
     """只读环境状态，计算三项归一化Lyapunov特征。"""
+    total_task_count = max(len(environment.tasks), 1)
     active = [
         state
         for state in environment.tasks.values()
@@ -80,8 +85,27 @@ def extract_lyapunov_features(environment, config):
             * remaining
             * urgency ** float(config["urgency_power"])
         )
-    backlog = float(np.mean(backlog_terms)) if backlog_terms else 0.0
-    expiration_risk = float(np.mean(risk_terms)) if risk_terms else 0.0
+    # 使用Episode任务总数作固定分母，任务完成后势函数才会真实下降。
+    backlog = float(sum(backlog_terms) / total_task_count)
+    expiration_risk = float(sum(risk_terms) / total_task_count)
+    expired_undelivered = 0.0
+    for state in environment.tasks.values():
+        if state.status != TaskStatus.EXPIRED:
+            continue
+        task = state.definition
+        undelivered_ratio = float(
+            np.clip(
+                (task.data_size_mbit - state.delivered_to_ground_mbit)
+                / task.data_size_mbit,
+                0.0,
+                1.0,
+            )
+        )
+        expired_undelivered += (
+            float(np.clip(task.priority / 10.0, 0.0, 1.0))
+            * undelivered_ratio
+            / total_task_count
+        )
 
     arrived_rows = [
         environment.task_index[task_id]
@@ -101,14 +125,24 @@ def extract_lyapunov_features(environment, config):
     utilization_imbalance = (
         float(np.mean(imbalances)) if imbalances else 0.0
     )
-    return LyapunovFeatures(backlog, expiration_risk, utilization_imbalance)
+    return LyapunovFeatures(
+        backlog,
+        expiration_risk,
+        expired_undelivered,
+        utilization_imbalance,
+    )
 
 
 def lyapunov_potential(features, weights):
     """按配置权重组合Lyapunov势函数。"""
     value = sum(
         float(weights[name]) * float(getattr(features, name))
-        for name in ("backlog", "expiration_risk", "utilization_imbalance")
+        for name in (
+            "backlog",
+            "expiration_risk",
+            "expired_undelivered",
+            "utilization_imbalance",
+        )
     )
     if not math.isfinite(value):
         raise ValueError("Lyapunov势函数包含NaN或Inf")
@@ -172,6 +206,11 @@ class PpoLyaReward:
             current_potential=current_potential,
             shaping_reward=shaping,
             manual_reward=manual.total_reward,
+            manual_components=(
+                manual.component_values()
+                if hasattr(manual, "component_values")
+                else {}
+            ),
             total_reward=total,
         )
         self.previous_features = current_features

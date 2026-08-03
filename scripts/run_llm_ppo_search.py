@@ -14,15 +14,15 @@ from mappo.config import load_mappo_config
 
 def parse_args():
     parser = argparse.ArgumentParser(description="搜索并冻结LLM-PPO奖励权重")
-    parser.add_argument("--provider", choices=("mock", "deepseek"), default="mock")
+    parser.add_argument("--provider", choices=("mock", "deepseek"), default="deepseek")
     parser.add_argument("--live-api", action="store_true")
-    parser.add_argument("--rounds", type=int)
-    parser.add_argument("--candidates-per-round", type=int)
-    parser.add_argument("--candidate-episodes", type=int)
+    parser.add_argument("--rounds", type=int, default=5)
+    parser.add_argument("--candidates-per-round", type=int, default=8)
+    parser.add_argument("--candidate-episodes", type=int, default=2)
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--config", default="configs/baselines.yaml")
     parser.add_argument("--mappo-config", default="configs/mappo.yaml")
-    parser.add_argument("--output-dir")
+    parser.add_argument("--output-dir", default="results/baselines/llm_search/llmppo_5r8c_formal_v1")
     return parser.parse_args()
 
 

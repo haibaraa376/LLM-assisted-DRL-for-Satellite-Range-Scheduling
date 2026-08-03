@@ -1,13 +1,15 @@
 """使用冻结LLM权重组合现有八项奖励特征。"""
 
 from dataclasses import dataclass
+import hashlib
+import json
 
 from mappo.manual_reward import RewardBreakdown, combine_manual_reward
 from mappo.reward_metadata import RewardLogMetadata
 
 
-def reward_spec_weights(reward_spec):
-    """把严格Schema字段映射到人工奖励组合函数的固定键。"""
+def raw_reward_spec_weights(reward_spec):
+    """把严格Schema字段映射为未经尺度校正的八项原始权重。"""
     positive = reward_spec.positive_weights
     penalty = reward_spec.penalty_weights
     return {
@@ -20,6 +22,40 @@ def reward_spec_weights(reward_spec):
         "coordination_conflict": penalty["coordination_conflict_rate"],
         "relay_cost": penalty["relay_cost"],
     }
+
+
+def normalized_reward_spec_weights(reward_spec, manual_weights):
+    """按L1范数把LLM权重缩放到人工奖励的总权重尺度。"""
+    raw = raw_reward_spec_weights(reward_spec)
+    raw_sum = float(sum(abs(value) for value in raw.values()))
+    manual_sum = float(sum(abs(value) for value in manual_weights.values()))
+    if raw_sum <= 0.0 or manual_sum <= 0.0:
+        raise ValueError("奖励权重L1范数必须大于0")
+    factor = manual_sum / raw_sum
+    effective = {name: float(value) * factor for name, value in raw.items()}
+    digest = hashlib.sha256(
+        json.dumps(
+            effective,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    return effective, {
+        "normalization_mode": "l1_match_manual",
+        "normalization_factor": factor,
+        "raw_weight_l1": raw_sum,
+        "effective_weight_l1": manual_sum,
+        "effective_weights_sha256": digest,
+        "raw_weights": raw,
+        "effective_weights": effective,
+    }
+
+
+def reward_spec_weights(reward_spec, manual_weights=None):
+    """兼容读取权重；提供人工权重时返回正式有效权重。"""
+    if manual_weights is None:
+        return raw_reward_spec_weights(reward_spec)
+    return normalized_reward_spec_weights(reward_spec, manual_weights)[0]
 
 
 @dataclass(frozen=True)
@@ -50,6 +86,14 @@ class LlmWeightReward:
         self.feature_extractor = feature_extractor
         self.reward_spec = reward_spec
         self.reward_spec_id = reward_spec.spec_id
+        self.effective_weights, normalization = normalized_reward_spec_weights(
+            reward_spec,
+            feature_extractor.config["weights"],
+        )
+        self.weight_metadata = {
+            "reward_spec_id": reward_spec.spec_id,
+            **normalization,
+        }
         self.warning_count = 0
         self.last_breakdown = None
 
@@ -63,7 +107,7 @@ class LlmWeightReward:
         extracted = self.feature_extractor.compute(environment, info)
         base = combine_manual_reward(
             extracted.features,
-            reward_spec_weights(self.reward_spec),
+            self.effective_weights,
             self.feature_extractor.config["numerical"],
         )
         breakdown = LlmRewardBreakdown(base, self.reward_spec_id)

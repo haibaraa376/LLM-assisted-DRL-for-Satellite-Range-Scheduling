@@ -6,6 +6,10 @@ from pathlib import Path
 from mappo.checkpoint import load_checkpoint, restore_rng_state
 from mappo.encoding import MappoObservationEncoder
 from mappo.evaluator import MappoEvaluator
+from mappo.evaluation_protocol import (
+    build_evaluation_protocol,
+    public_protocol_metadata,
+)
 from mappo.manual_reward import ManualReward
 from mappo.networks import CentralizedCritic, SharedActor
 from mappo.trainer import MappoTrainer
@@ -36,6 +40,9 @@ def build_training_config(baseline_config, output_dir):
         ),
         "checkpoint_interval_episodes": 1,
         "validation": deepcopy(training["validation"]),
+        "evaluation_protocols": deepcopy(
+            baseline_config["evaluation_protocols"]
+        ),
         "checkpoint": {
             "best_path": str(root / "best_checkpoint.pt"),
             "last_path": str(root / "last_checkpoint.pt"),
@@ -63,6 +70,9 @@ def build_baseline_components(
     config["seed"] = int(baseline_config["seed"])
     config["device"] = baseline_config["device"]
     config["baseline_method"] = method.value
+    config["baseline_evaluation_protocols"] = deepcopy(
+        baseline_config["evaluation_protocols"]
+    )
     set_global_seed(config["seed"])
     environment = CrossDomainSatelliteRangeSchedulingEnv(
         load_skyfield_dataset(),
@@ -93,6 +103,9 @@ def build_baseline_components(
             raise ValueError("LLM-PPO必须提供冻结reward spec")
         reward_model = LlmWeightReward(manual, reward_spec)
         config["reward_spec_id"] = reward_spec.spec_id
+        config["llm_reward_weight_metadata"] = deepcopy(
+            reward_model.weight_metadata
+        )
     trainer = MappoTrainer(
         environment,
         encoder,
@@ -128,9 +141,23 @@ def restore_baseline_checkpoint(path, actor, critic, trainer, encoder, method):
     expected_spec = getattr(trainer.reward_model, "reward_spec_id", None)
     if saved_config.get("reward_spec_id") != expected_spec:
         raise ValueError("Checkpoint冻结奖励Spec与当前文件不一致")
+    expected_weight_metadata = getattr(
+        trainer.reward_model,
+        "weight_metadata",
+        None,
+    )
+    if saved_config.get("llm_reward_weight_metadata") != expected_weight_metadata:
+        raise ValueError("Checkpoint的LLM有效权重元数据与当前配置不一致")
     state = checkpoint.get("training_state")
     if not isinstance(state, dict):
         raise ValueError("基线Resume需要Episode边界Checkpoint")
+    protocol = build_evaluation_protocol(
+        "checkpoint_selection",
+        trainer.config["baseline_evaluation_protocols"],
+        trainer.environment.task_splits,
+    )
+    if state.get("evaluation_protocol") != public_protocol_metadata(protocol):
+        raise ValueError("Checkpoint评估协议与当前运行协议不一致")
     restore_rng_state(checkpoint.get("rng_state"), trainer.rng)
     trainer.environment_steps = int(state["environment_steps"])
     return state

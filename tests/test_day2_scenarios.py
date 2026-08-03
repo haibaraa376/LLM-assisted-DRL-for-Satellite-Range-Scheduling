@@ -193,6 +193,9 @@ def test_sgl_complete_and_partial_transmission():
     )
     assert complete.tasks["task"].status == TaskStatus.COMPLETED
     assert info["transmission_records"][0].accepted
+    assert info["delivered_timeliness_raw"] == pytest.approx(
+        info["timeliness_raw"]
+    )
     assert np.isclose(complete.tasks["task"].total_accounted_data_mbit(), 600.0)
 
     partial = make_env([task(size=3000.0)])
@@ -467,6 +470,8 @@ def test_scenario_11_concurrent_timeliness_is_summed():
     expected = timeliness_contribution(tasks[0], 300.0, 0.0)
     expected += timeliness_contribution(tasks[1], 150.0, 0.0)
     assert np.isclose(environment.timeliness_raw, expected)
+    # 两条均为星间中继：旧及时性继续累计，新送达及时性保持为零。
+    assert environment.delivered_timeliness_raw == pytest.approx(0.0)
 
 
 def test_scenario_12_arbitration_ignores_action_dictionary_order():

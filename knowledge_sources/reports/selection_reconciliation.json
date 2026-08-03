@@ -1,0 +1,24 @@
+{
+  "pdf_file_count": 15,
+  "spreadsheet_row_count": 27,
+  "spreadsheet_a_core_count": 16,
+  "spreadsheet_include_yes_count": 24,
+  "matched_file_count": 15,
+  "unmatched_files": [],
+  "missing_expected_documents": [
+    "SRS-07",
+    "SRS-09",
+    "SRS-10",
+    "SRS-11",
+    "SRS-13",
+    "SRS-14",
+    "RS-05",
+    "RS-09",
+    "RS-10",
+    "RS-11"
+  ],
+  "duplicate_matches": [],
+  "notes": [
+    "Excel是唯一元数据来源；未下载条目不会创建伪文件。"
+  ]
+}

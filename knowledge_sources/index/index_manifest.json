@@ -1,0 +1,58 @@
+{
+  "schema_version": "2.0",
+  "document_count": 13,
+  "chunk_count": 921,
+  "embedding_dimension": 768,
+  "embedding_model_name": "microsoft/codebert-base",
+  "embedding_model_revision": null,
+  "tokenizer_name": "microsoft/codebert-base",
+  "pooling": "attention_mask_mean",
+  "normalize_l2": true,
+  "corpus_mean_centering": true,
+  "similarity": "cosine",
+  "chunking_config": {
+    "method": "character",
+    "chunk_size": 1024,
+    "chunk_overlap": 128,
+    "minimum_chunk_size": 200,
+    "prefer_sentence_boundary": true,
+    "minimum_quality_score": 0.55
+  },
+  "keyword_score_enabled": true,
+  "combined_score_weights": {
+    "dense": 0.85,
+    "keyword": 0.1,
+    "quality": 0.05
+  },
+  "mmr_enabled": true,
+  "mmr_lambda": 0.85,
+  "candidate_pool_size": 30,
+  "max_chunks_per_document": 2,
+  "source_register_sha256": "b03514c1691b649e2824da31113ba21b60f69f41197095902925322186c5cb22",
+  "documents_jsonl_sha256": "434d3b698a738f67a25aeadd90963330a74d4a3f1c2c0eb020dc98f256945339",
+  "chunks_jsonl_sha256": "f2284798cd531788baafbeb7be55542946ceea7ecb9188847f277e1ea96832ec",
+  "embeddings_sha256": "e1d6176936baf88bba5e15d48b20ba8e5efbf1ae2d381cf4bc39ebbc905d449a",
+  "chunk_ids_sha256": "41a23383e1a108dc52f058b3a3a76decd5a8cedde6f5ff785a71a2fe558b7d60",
+  "corpus_mean_sha256": "12de0f827d26f60932598c38b1a6040aa348e7a3280a1dd6cbea03d1a570d257",
+  "included_document_ids": [
+    "RS-02",
+    "RS-03",
+    "RS-04",
+    "RS-07",
+    "RS-08",
+    "SRS-01",
+    "SRS-02",
+    "SRS-03",
+    "SRS-04",
+    "SRS-05",
+    "SRS-06",
+    "SRS-08",
+    "SRS-12"
+  ],
+  "excluded_document_ids": [
+    "RS-01",
+    "RS-06"
+  ],
+  "missing_optional_document_ids": [],
+  "knowledge_base_version": "kb_4fa577449794"
+}

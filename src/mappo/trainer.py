@@ -132,6 +132,7 @@ class MappoTrainer:
         last_done = False
         final_info = None
         reward_component_sums = {}
+        reward_component_abs_sums = {}
 
         for _ in range(steps):
             encoded = self.encoder.encode_all_agents(self.observations)
@@ -213,6 +214,10 @@ class MappoTrainer:
                 reward_component_sums[name] = (
                     reward_component_sums.get(name, 0.0) + float(value)
                 )
+                reward_component_abs_sums[name] = (
+                    reward_component_abs_sums.get(name, 0.0)
+                    + abs(float(value))
+                )
             self.environment_steps += 1
             last_done = done
             final_info = info
@@ -257,6 +262,7 @@ class MappoTrainer:
             "episode_done": bool(last_done),
             "final_info": final_info,
             "reward_component_sums": reward_component_sums,
+            "reward_component_abs_sums": reward_component_abs_sums,
             "reward_warning_count": int(
                 getattr(self.reward_model, "warning_count", 0)
             ),

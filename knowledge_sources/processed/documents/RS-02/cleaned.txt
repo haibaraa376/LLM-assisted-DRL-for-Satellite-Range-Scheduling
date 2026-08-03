@@ -1,0 +1,359 @@
+eprints@whiterose.ac.uk https://eprints.whiterose.ac.uk
+Universities of Leeds, Sheffield and York
+Deposited via The University of York.
+White Rose Research Online URL for this paper: https://eprints.whiterose.ac.uk/id/eprint/75111/
+Version: Accepted Version
+Proceedings Paper:
+Devlin, Sam and Kudenko, Daniel (2011) Theoretical Considerations of Potential-Based 
+Reward Shaping for Multi-Agent Systems. In: The 10th International Conference on 
+Autonomous Agents and Multiagent Systems. Tenth International Conference on 
+Autonomous Agents and Multi-Agent Systems, 02 May 2011 ACM, TWN, pp. 225-232. 
+Reuse 
+Items deposited in White Rose Research Online are protected by copyright, with all rights reserved unless  indicated otherwise. They may be downloaded and/or printed for private study, or other acts as permitted by  national copyright laws. The publisher or other rights holders may allow further reproduction and re-use of  the full text version. This is indicated by the licence information on the White Rose Research Online record  for the item. 
+Takedown 
+If you consider content in White Rose Research Online to be in breach of UK law, please notify us by  emailing eprints@whiterose.ac.uk including the URL of the record and the reason for the withdrawal request. 
+
+Theoretical Considerations of Potential-Based Reward
+Shaping for Multi-Agent Systems
+Sam Devlin
+University of York, UK
+Daniel Kudenko
+University of York, UK
+ABSTRACT
+Potential-based reward shaping has previously been proven to both be equivalent to Q-table initialisation and guarantee policy invariance in single-agent reinforcement learning.
+The method has since been used in multi-agent reinforcement learning without consideration of whether the theoretical equivalence and guarantees hold. This paper extends the existing proofs to similar results in multi-agent systems, providing the theoretical background to explain the success of previous empirical studies. Specifically, it is proven that the equivalence to Q-table initialisation remains and the Nash Equilibria of the underlying stochastic game are not modified. Furthermore, we demonstrate empirically that potential-based reward shaping effects exploration and, consequentially, can alter the joint policy converged upon.
+Categories and Subject Descriptors
+I.2.6 [Artificial Intelligence]: Learning; I.2.11 [Artificial
+Intelligence]: Distributed Artificial Intelligence—Multiagent Systems
+General Terms
+Theory, Experimentation
+Keywords
+Reinforcement Learning, Reward Shaping,
+Multiagent Learning, Reward structures for learning.
+1.
+INTRODUCTION
+Current trends are showing a rise in interest in MultiAgent Systems (MAS). With multiple, distributed agents a larger set of problem domains can be practically modelled
+[35]. To control each agent, a reinforcement learning solution can provide adaptive, autonomous, and self-improving agents.
+However, whilst reinforcement learning can handle problems with combinatorial state spaces in single-agent problem domains [21, 26], adding more agents to the same environment is a significant challenge [5]. Specifically, as the other
+Cite as: Theoretical Considerations of Potential-Based Reward Shaping for Multi-Agent Systems, Sam Devlin and Daniel Kudenko, Proc. of
+10th Int. Conf. on Autonomous Agents and Multiagent Systems (AAMAS 2011), Yolum, Tumer, Stone and Sonenberg (eds.),
+May, 2–6, 2011, Taipei, Taiwan, pp. XXX–XXX.
+Copyright c⃝2011, International Foundation for Autonomous Agents and
+Multiagent Systems (www.ifaamas.org). All rights reserved.
+agents execute their own actions they subsequently influence the state of the world. This makes the environment appear non-stationary to an individual agent because other agents may concurrently learn and change their behaviour.
+Unknown to the agent, the same local state-action pair will have a different transition function even though the global state-joint action pair has not changed.
+It has been shown in single-agent reinforcement learning that the quicker a learning agent can reach convergence in its policy the more it will benefit from instability in the environment, as it is better suited to adapt to changes [30]. But in MAS the state-action space grows exponentially with the number of agents, which may considerably slow down convergence reducing agents’ ability to adapt quickly. Therefore, methods of reducing the time to convergence are of significant importance when implementing reinforcement learning solutions to MAS.
+One such method, empirically demonstrated to decrease the time for each individual learning in a common environment to converge on a stable policy, is incorporating heuristic knowledge [17, 25].
+However, most existing reinforcement learning algorithms were proposed under the assumption that there is no knowledge available about the problem.
+This is often not the case; in many practical applications heuristic knowledge can be easily identified by the designer of the system [23], or acquired using reasoning or learning
+[10].
+In single-agent reinforcement learning, potential-based reward shaping has been proven to be a principled and theoretically correct method of incorporating heuristic knowledge into an agent. Provided domain knowledge dependent on states alone, receiving an additional potential-based reward of the correct form does not alter the optimal policy of an agent [20].
+To date, applications of potential-based reward shaping to MAS [2, 16] have been studied without published consideration of whether the proofs, originally intended for singleagent problem domains, hold for multi-agent reinforcement learning.
+The bulk of our findings, discussed in Section 4, consider the theoretical implications for reward shaping of changing from single-agent problem domains to MAS. This work focuses on the analysis of two fundamental results in singleagent, potential-based reward shaping; the equivalence to
+Q-table initialisation [33] and the invariance of policies between shaped and non-shaped agents provided [20].
+The first remains constant, potential-based reward shaping is equivalent to Q-table initialisation regardless of the
+ number of agents learning in the environment.
+The latter, however, takes new meanings in a MAS. The goal of single-agent reinforcement learning is to compute the policy of maximum reward but with multiple agents, potentially competing, the goal becomes Nash Equilibrium [19]. Therefore, the multi-agent equivalent to policy invariance [20], successfully proven in this paper, is that potential-based reward shaping does not alter the Nash Equilibria of the MAS.
+However, potential-based reward shaping can have implications for the joint policy a multi-agent reinforcement learning solution will converge to. As we will show, the final joint policy will still be a Nash Equilibrium of the original system (i.e., before any agents received reward shaping) but may not be the same as the additional reward alters the individual agent’s exploration which effects the experiences all agents will have.
+We close, in Section 5 by empirically demonstrating our findings but first, to begin, the following section will review existing work and the required background knowledge.
+2.
+EXISTING WORK
+2.1
+Reinforcement Learning
+Reinforcement learning is a paradigm which allows agents to learn by reward and punishment from interactions with the environment [28]. The numeric feedback received from the environment is used to improve the agent’s actions. The majority of work in the area of reinforcement learning applies a Markov Decision Process (MDP) as a mathematical model [22].
+An MDP is a tuple ⟨S, A, T, R⟩, where S is the state space,
+A is the action space, T(s, a, s′) = Pr(s′|s, a) is the probability that action a in state s will lead to state s′, and
+R(s, a, s′) is the immediate reward r received when action a taken in state s results in a transition to state s′. The problem of solving an MDP is to find a policy (i.e., mapping from states to actions) which maximises the accumulated reward. When the environment dynamics (transition probabilities and a reward function) are available, this task can be solved using iterative approaches like policy and value iteration [3].
+MDP’s constitute a modelling framework for reinforcement learning agents whose goal is to learn an optimal policy when the environment dynamics are not available and, thus, value iteration cannot be used. However the concept of an iterative approach in itself is the backbone of the majority of reinforcement learning algorithms. These algorithms apply so called temporal-difference updates to propagate information about values of states, V (s), or state-action, Q(s, a), pairs [27].
+These updates are based on the difference of the two temporally different estimates of a particular state or state-action value. The Q-learning algorithm is such a method [28]. After each transition, (s, a) →(s′, r), in the environment, it updates state-action values by the formula:
+Q(s, a) ←Q(s, a) + α[r + γ max a′
+Q(s′, a′) −Q(s, a)]
+(1) where α is the rate of learning and γ is the discount factor.
+It modifies the value of taking action a in state s, when after executing this action the environment returned reward r, and moved to a new state s′.
+2.2
+Multi-Agent Reinforcement Learning
+Applications of reinforcement learning to MAS typically take one of two approaches; multiple individual learners or joint action learners [6]. The former is the deployment of multiple agents each using a single-agent reinforcement learning algorithm. The latter is a group of multi-agent specific algorithms designed to consider the existence of other agents.
+Multiple individual learners assume any other agents to be a part of the environment and so, as the others simultaneously learn, the environment appears to be dynamic as the probability of transition when taking action a in state s changes over time.
+To overcome the appearance of a dynamic environment, joint action learners were developed that extend their value function to consider for each state the value of each possible combination of actions by all agents.
+Learning by joint action, however, breaks a common fundamental concept of MAS in which each agent is self motivated and so may not consent to the broadcasting of their action choices. Furthermore, the consideration of the joint action causes an exponential increase in the number of values that must be calculated with each additional agent added to the system. Typically, joint action learning algorithms have only been demonstrated in trivial problem domains [31, 11,
+6] whilst applications in complex systems most often implement multiple individual learners [18, 29, 30]. For these reasons, this work will focus on multiple individual learners and not joint action learners. However, these proofs can be extended to cover joint action learners, those we have specifically considered include MiniMax Q-learning [14], Friendor-Foe Q-learning [15] and Nash-Q [11].
+Unlike single-agent reinforcement learning where the goal is to maximise the individual’s reward, when multiple self motivated agents are deployed not all agents can always receive their maximum reward. Instead some compromise must be made, typically the system is designed aiming to converge to a Nash Equilibrium [24].
+Multiple individual learners will, given sufficient learning time, converge to a point of equilibrium, however, no guarantees can be made that this will be the optimum Nash Equilibrium [6].
+To model a MAS, the single-agent MDP becomes inadequate and instead the more general Stochastic Game (SG) is required [5]. A SG of n agents is a tuple
+⟨S, A1, ..., An, T, R1, ..., Rn⟩, where S is the state space, Ai is the action space of agent i, T(s, A, s′) = Pr(s′|s, A) is the probability that joint action A in state s will lead to state s′, and Ri(s, a, s′) is the immediate reward r received by agent i when action a taken in state s results in a transition to state s′ [9].
+3.
+REWARD SHAPING
+The immediate reward r, which is in the update rule given by Equation 1, represents the feedback from the environment. The idea of reward shaping is to provide an additional reward which will improve the convergence of the learning agent with regard to the learning speed [20, 23]. This concept can be represented by the following formula for the
+Q-learning algorithm:
+Q(s, a) ←Q(s, a)+α[r +F(s, s′)+γ max a′
+Q(s′, a′)−Q(s, a)]
+(2) where F(s, s′) is the general form of the shaping reward.
+Even though reward shaping has been powerful in many
+ experiments it quickly became apparent that, when used improperly, it can be also very misleading [23].
+To deal with such problems, potential-based reward shaping was proposed [20] as the difference of some potential function
+Φ defined over a source s and a destination state s′:
+F(s, s′) = γΦ(s′) −Φ(s)
+(3) where γ must be the same discount factor as used in the agent’s update rule (see Equation 1).
+Ng et al. [20] proved that potential-based reward shaping, defined according to Equation 3, guarantees learning a policy which is equivalent to the one learned without reward shaping in both infinite and finite horizon MDP’s.
+Wiewiora [33] later proved that an agent learning with potential-based reward shaping and no knowledge-based Qtable initialisation will behave identically to an agent without reward shaping when the latter agent’s value function is initialised with the same heuristic knowledge represented by Φ(s). This is an important fact, because when function approximation is used in big environments, where the structural properties of the state space are not clear, it is not easy to initialise the value function. Potential-based reward shaping represents a flexible and theoretically correct method to incorporate background knowledge regarding states into reinforcement learning algorithms.
+3.1
+Reward Shaping In Multi-Agent Systems
+Incorporating heuristic knowledge has been shown to be beneficial in multi-agent reinforcement learning [2, 16, 17,
+25]. However, some of the previous examples did not use potential-based functions to shape the reward [17, 25] and could potentially, therefore, suffer from introducing beneficial cyclic policies that cause convergence to an unintended behaviour as demonstrated previously in a single-agent problem domain [23].
+The remaining applications that were potential-based [2,
+16], demonstrated an increased probability of convergence to a higher value Nash Equilibrium.
+As it has long been established that multiple individual learners are not guaranteed to converge to the optimal Nash Equilibrium [6], a number of methods to increase the probability of this occurring have already been devised. Amongst them are COIN
+[34] and myopic heuristics [6]. However, these methods require knowledge of the reward function or the joint action.
+Potential-based reward shaping can similarly increase the probability of convergence to the optimal Nash Equilibrium provided a good heuristic, but does so without requiring either of these specific pieces of knowledge which are commonly unavailable in MAS applications.
+Both applications of potential-based reward shaping were published with no consideration of whether the proofs of guaranteed policy invariance hold in multi-agent reinforcement learning or how they effect the joint policy at time of convergence. Starting in the following section, our contribution fills this gap in knowledge and provides the theoretical results to explain these previous empirical studies.
+4.
+THEORY
+To discuss the implications of using potential-based reward shaping in MAS we must consider the differences between single-agent and multi-agent reinforcement learning.
+SGs, unlike MDPs, share amongst all agents a common transition function and common states but neither of these are effected by shaping the reward function of one or more of the agents. Although the agents may change their own policy and alter their exploration path due to the additional potential-based reward, this does not change the dynamics
+(transition function or states) of the environment, nor the set of actions the agent can take.
+In fact the only elements of a SG to change when one or more agent implements potential-based reward shaping are the individual reward functions of those agents. If, as we will later show to be true in Section 4.2, these alterations to the individual reward functions do not change the best response policy of a shaped agent given a fixed set of policies followed by all other agents, the Nash Equilibria of the underlying SG remain constant regardless of how many agents are using potential-based reward shaping.
+Formally, this argument will be completed by first showing, in the following sub-section, that potential-based reward shaping is equivalent to Q-table initialisation in the multi-agent case. Both of these findings, as we will discuss in Section 4.3, has implications for the eventual policy that will be converged upon.
+4.1
+Potential-Based Reward Shaping And QValue Initialisation Are Equivalent
+The proof of Wiewiora [33] of the equivalence of potentialbased reward shaping and Q-value initialisation was published in the context of single agent problem domains but also holds for problem domains with multiple individual learners.
+From [33] we quote:
+Theorem 1 Given the same sequence of experiences during learning, ∆Q(s, a) always equals
+∆Q′(s, a).
+where Q(s, a) is the modelled value function of an agent learning with potential-based reward shaping and Q′(s, a) is the modelled value function of an agent learning with Qvalue initialisation.
+The original proof uses a fixed sequence of experiences for both agents.
+The theory can be extended to multiple individual learners simply by extending the definition of the sequence experienced from the 4-tuple ⟨s, a, r, s′⟩to the 2n + 2-tuple ⟨s, a1, a2, ..., an, r1, r2, ..., rn, s′⟩. Using the extended sequence and the inductive proof from [33] the following proves that Theorem 1 holds also for multi-agent reinforcement learning.
+Proof By Induction
+Consider any arbitrary agent i from the set of all agents. As before, Q(s, a) is the modelled value function when the agent is learning with potential-based reward shaping and Q′(s, a) is the modelled value function had the same agent learnt without reward shaping but with Q-value initialisation. The former agent will later be referred to as L and the latter as
+L′.
+Agent L will update its Q-values by the rule:
+Qi(s, a)
+←
+Qi(s, a) +
+α (ri + F(s, s′) + γ max a′
+Qi(s′, a′) −Qi(s, a))
+|
+{z
+}
+δQi(s,a)
+(4)
+ where F(s, s′) is the potential-based reward shaping function and δQi(s, a) is the amount (scaled by α) that the Q value will be updated by. The current Q-values of Agent
+L can be represented formally as the initial value plus the change since:
+Qi(s, a) = Q0 i (s, a) + ∆Qi(s, a)
+(5) where Q0 i (s, a) is agent i’s initial Q-value of state-action pair (s, a). Similarly agent L′ updates its Q-values by the rule:
+Q′ i(s, a) ←Q′ i(s, a) + α (ri + γ max a′
+Q′ i(s′, a′) −Q′ i(s, a))
+|
+{z
+}
+δQ′ i(s,a)
+(6)
+And its current Q-values can be represented formally as:
+Q′ i(s, a) = Q0 i (s, a) + Φ(s) + ∆Q′ i(s, a)
+(7) where Φ(s) is the potential for state s.
+Base Case
+Before either agent experiences anything, the Q-tables of L and L′ are both their respective initial values, and therefore both ∆Qi and ∆Q′ i are uniformly zero.
+Inductive Case
+Assuming ∆Qi = ∆Q′ i, both L and L′ will be updated by the same amount in response to experience
+⟨s, a1, a2, ..., an, r1, r2, ..., rn, s′⟩. First consider the update performed by L:
+δQi(s, a)
+= ri + F(s, s′) + γ max a′
+Qi(s′, a′) −Qi(s, a)
+= ri + γΦ(s′) −Φ(s)
++γ max a′ (Q0 i (s′, a′) + ∆Qi(s′, a′))
+−Q0 i (s, a) −∆Qi(s, a)
+(8)
+Now consider the update performed by L′:
+δQ′ i(s, a)
+= ri + γ max a′
+Q′ i(s′, a′) −Q′ i(s, a)
+= ri + γ max a′ (Q0 i (s′, a′) + Φ(s′) + ∆Q′(s′a′))
+−Q0 i (s, a) −Φ(s) −∆Q′(s, a)
+= ri + γ max a′ (Q0 i (s′, a′) + Φ(s′) + ∆Q(s′a′))
+−Q0 i (s, a) −Φ(s) −∆Q(s, a)
+= ri + γΦ(s′) −Φ(s)
++γ max a′ (Q0 i (s′, a′) + ∆Qi(s′, a′))
+−Q0 i (s, a) −∆Qi(s, a)
+=
+δQi(s, a)
+(9)
+Therefore, the Q-tables of both L and L′ are both updated by the same value and so ∆Qi and ∆Q′ i remain equal.
+Given that Theorem 1 of [33] holds for the multi-agent context then so too does Theorem 2, again quoted from [33]:
+Theorem 2 If L and L′ have learned on the same sequence of experiences and use an advantagebased policy, they will have an identical probability distribution for their next action.
+where an advantage-based policy is one that chooses actions based not on the absolute magnitude of the Q-values but on their relative differences within the current state. Examples of advantage-based policies include greedy, ǫ-greedy and Boltzmann soft-max.
+This is immediately apparent when considering both
+∆Qi = ∆Q′ i from Theorem 1 and Equations 5 and 7. As the difference between the Q-values of agent L and agent
+L′ are the potential of the state, the difference is consistent across all actions in any given state.
+Therefore, the actions maintain the same relative differences allowing an advantage-based policy to make the same action decisions.
+Effectively, at any time in learning L and L′ will behave the same way (make the same decisions with the same probabilities). To conclude, whether an agent is shaped or initialised it will have the same effect on all other agents in the environment, the learning dynamics are not changed by using one method or the other and the agents as a collective whole will converge or not upon the same joint policy regardless of whether the agent was shaped or initialised.
+Finally, although the proof here was written specifically for Q-learning, this was simply in keeping with the original work of [33].
+In single-agent problem domains the equivalence of Q-table initialisation and potential-based reward shaping can be proven also in SARSA and other temporal difference algorithms [33]. Similar extensions to multi-agent, as above, are possible also for these extensions.
+4.2
+Potential-Based Reward Shaping Does
+Not Alter The Nash Equilibria Of A
+Stochastic Game
+As already established the common goal of MARL is a
+Nash Equilibrium. The typical concern of modifying a reward function is that the original goals of the agent will be altered. Ng showed previously that in the single-agent context, the optimum policy was unchanged by the introduction of reward shaping provided the function was potential-based
+[20]. To extend this to MARL we must now consider whether implementing the same reward shaping in one or more agents in a SG will alter its points of equilibrium.
+Formally a Nash Equilibrium in a SG is:
+∀i ∈1 . . . n, πi ∈Πi|Ri(πNE i
+∪πNE
+−i ) ≥Ri(πi ∪πNE
+−i ) (10) where n is the number of agents, Πi is the set of all possible policies of agent i, Ri is the reward function for agent i, πNE i is a specific policy of agent i and πNE
+−i is the joint policy of all agents except agent i following their own fixed specific policy. If the inequality holds for all agents, the joint policy of each agent following its policy πNE i is a Nash Equilibrium.
+Now consider any arbitrary agent i from the set of all agents. For the inequality above to hold for agent i, we must consider the set ΠNE i of all joint policies consisting of each possible policy of agent i combined with πNE
+−i .
+Formally, this set contains:
+∀πi ∈Πi|(πi ∪πNE
+−i )
+(11)
+
+Each fixed joint policy in the set ΠNE i will generate a fixed infinite sequence of experiences when followed consistently from the current state s0 of the form:
+ ̄s
+= s0, a0,0, a0,1, . . . , a0,n, r0,0, r0,1, . . . , r0,n, . . . , s∞, a∞,0, a∞,1, . . . , a∞,n, r∞,0, r∞,1, . . . , r∞,n, . . .
+(12) where sj is the state at time j, aj,i is the action taken by agent i at time j and rj,i is the reward received by agent i at time j.
+Then using the proof of [1], we can show the difference of the return received by agent i when following any arbitrary fixed sequence with or without potential-based reward shaping is the potential of the state s0.
+Proof
+The return for agent i when experiencing sequence  ̄s in a discounted framework without shaping is:
+Ui( ̄s) =
+∞
+X j=0
+γjrj,i
+(13)
+Now consider the same agent but with a reward function modified by adding a potential-based reward function. The return of the shaped agent experiencing the same sequence
+ ̄s is:
+Ui,Φ( ̄s)
+=
+∞
+X j=0
+γj(rj,i + F(sj, sj+1))
+=
+∞
+X j=0
+γj(rj,i + γΦ(sj+1) −Φ(sj))
+=
+∞
+X j=0
+γjrj,i +
+∞
+X j=0
+γj+1Φ(sj+1) −
+∞
+X j=0
+γjΦ(sj)
+=
+Ui( ̄s) +
+∞
+X j=1
+γjΦ(sj) −Φ(s0) −
+∞
+X j=1
+γjΦ(sj)
+=
+Ui( ̄s) −Φ(s0)
+(14)
+Therefore, any policy that previously maintained the inequality of Equation 10 will still maintain the inequality.
+Formally, and more strictly we can conclude:
+∀πi ∈Πi|
+(Ri(πNE i
+∪πNE
+−i ) ≥Ri(πi ∪πNE
+−i )) ↔
+(Ri,Φ(πNE i
+∪πNE
+−i ) ≥Ri,Φ(πi ∪πNE
+−i ))
+(15) where Ri,Φ is the reward function of agent i when receiving both the environmental reward and the potential-based reward shaping.
+As implementing reward shaping only effects the reward function of that agent, the remaining agents will also still maintain the same policies as part of the Nash Equilibria.
+Whether the group will converge to this point depends on the learning algorithm used and is outside of this proof.
+However, it suffices to say that regardless of how many agents in the MAS are or are not implementing potentialbased reward shaping the points of equilibrium will remain constant.
+4.3
+Potential-Based Reward Shaping Alters
+Exploration
+In Section 4.1 we showed that an agent in a MAS receiving potential-based reward shaping is equivalent to one whose
+Q-table was initialised with each state s set to the potential Φ(s) of that state.
+However, the implications of this proof in a MAS extend past showing that two methods of introducing domain knowledge are equivalent. Instead, it is worth considering the results of [32], in which Wellman and
+Hu showed that the joint policy converged upon in a learning MAS was highly sensitive to initial belief. This clearly applies directly to Q-table initialisation, where the initial values directly represent some initial belief, and therefore, given that we have shown the equivalence between initialisation and shaping, also applies to potential-based reward shaping. This can be reasoned intuitively by considering the following.
+The MDP of an agent deployed in a common environment with other learning agents does not hold the Markov property as the transition probabilities are subject to change with the unseen but changing policies of the other agents.
+Therefore, the convergence to optimal policy guarantees of
+Q-learning do not hold. This has been demonstrated empirically in multi-agent reinforcement applications with multiple
+Q-learners converging to sub-optimal joint policies [2].
+Shaping alters the path of exploration an agent takes. In single-agent reinforcement learning, as convergence to the optimal policy is guaranteed, this only effects the time taken to reach convergence. If a good heuristic, is used the time will be reduced as the number of sub-optimal actions taken will be reduced, but similarly if a bad heuristic is used the agent will take longer to converge to the optimal policy.
+The concept of an optimal policy in MAS is not as clear.
+We have identified Nash Equilibrium as the typical goal of multi-agent reinforcement learning, but this does not necessarily identify a single goal. Most applications, with the exception of the very trivial, will have multiple points of equilibrium.
+Multiple individual learners will converge to one of these equilibrium, but whether it will be the optimum cannot be guaranteed [6]
+With multiple agents in the same environment, altering the exploration of one will change the experiences of all agents [12, 13]. The change in actions chosen by even just one agent now receiving potential-based reward shaping will result in different state transitions.
+The agents will then explore different areas of the joint policy space and, with multiple points of equilibrium possible, may converge to a different equilibrium then had the agent not received the reward shaping and subsequently not have altered its individual exploration path.
+Therefore, in multi-agent problem domains, without the guarantee of convergence to a single optimum goal, shaping can lead to convergence on a different joint policy. This was empirically demonstrated by Babes and Littman [2], where a shaped agent was able to lead a non-shaped agent to convergence on a joint policy of higher average reward. When shaping one or more agents in an environment with multiple learning agents, a good heuristic will encourage higher global utility similar to how in single-agent problem domains the use was preferably to reduce the time taken to converge.
+Unfortunately, the techniques can also have a detrimental effect encouraging miscoordination and/or lead the agents to converge on a less beneficial joint policy by directing the
+ s1 start s2 s3 s4
++10 s5
+−10 s6
++9 a,* b,* a,a;b,b a,b;b,a
+*,*
+*,*
+*,*
+*,*
+Figure 1: Boutilier’s Coordination Game agents away from frequently, or possibly ever, experiencing the equilibrium reached by non-shaped agents and instead trapping them in a sub-optimal point of equilibrium.
+To support and illustrate these claims the following section will present an empirical study that is typically characteristic of implementing potential-based reward shaping in a MAS.
+5.
+EMPIRICAL DEMONSTRATION
+To demonstrate the theorised effects of potential-based reward shaping, an empirical study of a game based on
+Boutilier’s coordination game [4] will be presented here.
+The game, illustrated in Figure 1, has six stages and two agents, each capable of two actions (a or b). The first agent’s first action choice in each episode decides if the agents will move to a state guaranteed to reward them minimally (s3) or to a state where they must co-ordinate to receive the highest reward (s2). However, in state s2 the agents are at risk of receiving a large negative reward if they do not choose the same action.
+In Figure 1, each transition is labelled with one or more action pairs such that the pair a, ∗means this transition occurs if agent 1 chooses action a and agent 2 chooses either action. When multiple action pairs result in the same transition the pairs are separated by a semicolon(;).
+The game has three joint policy Nash Equilibriums; the joint policy of opting for the safety state s3 or the two joint policies of moving to state s2 and coordinating on both choosing a or b. Any joint policy receiving the negative reward is not a Nash Equilibrium, as the first agent can choose to change its first action choice and so receive a higher reward by instead reaching state s3.
+Three sets of agents will be the focus of these experiments.
+All agents, in all sets, will learn by Q-learning with an ǫgreedy policy and discount factor (γ) of 1.
+One set will receive no reward shaping, to illustrate the average performance without heuristic knowledge, another set will receive potential-based reward shaping from a good heuristic whilst the final set receives shaping from a poor heuristic.
+The good heuristic, designed to encourage co-operation, gives states s1, s2 and s4 the potentials 5, 10 and 15 respectively. All other states receive a potential of 0. Therefore, any transition from states s1 to s2 or s2 to s4 will receive an additional reward of +5 but transitioning instead from state
+
+ 10000  15000  20000  25000  30000
+Percentage Behaviour Achieved
+Episode
+Good Shaped
+Not Shaped
+Bad Shaped
+Figure 2: Optimal Nash Equilibrium s2 to s5 will receive an additional reward of −10. Alternatively, the bad heuristic is designed to encourage miscoordination and so potentials of 5, 10 and 15 are given instead to states s1, s2 and s5 respectively. Again all other states receive a potential of 0.
+Our experimental results are intended to show, provided a good heuristic, the increased probability of converging to the joint policies of higher global utility (those achieving coordination in state s2). Alternatively, provided a bad heuristic, the agents will demonstrate that the Nash Equilibria have not changed and so converge still to one of the three original joint policy Nash Equilibria.
+5.1
+Results
+All experiments were run for 100,000 episodes (300,000 action choices) and repeated 100 times. The results, illustrated in Figures 2, 3 and 4, plot the mean percentage of the last 100 episodes performing the optimal, safety and suboptimal joint policies respectively. All figures include error bars illustrating the standard error from the mean. For clarity, graphs are plotted only up to 30,000 episodes as by this time all experiments had converged to a stable joint policy.
+Figure 2 shows that, for this relatively simple game, multiple individual learners alone can only converge to the optimal behaviour 72% of the time. Whereas, provided a good heuristic, potential-based reward shaping can increase the probability of convergence to this Nash Equilibrium to 100%.
+As theorised, provided a bad heuristic, the effect on the global utility can be detrimental. The probability of achieving optimal behaviour, with a potential function encouraging miscoordination, rapidly drops and converges on 0%.
+Instead, as illustrated by Figure 3, the poorly shaped agents converge to the safety Nash Equilibrium. Despite the miscoordination state (s5) receiving the largest potential, the agents do not converge to the sub-optimal behaviour, as illustrated by Figure 4.
+Figure 4, highlights that agents with no shaping or potential-based reward shaping never converge to consistently perform the sub-optimal joint policy. This is because miscoordination in this game is not a Nash Equilibrium, both with and without potential-based reward shaping. Regardless of which joint policy is encouraged, if the additional reward is potential based, the Nash Equilibria remain constant.
+However, Figure 4 illustrates the behaviour of an addi-
+
+ 10000  15000  20000  25000  30000
+Percentage Behaviour Achieved
+Episode
+Good Shaped
+Not Shaped
+Bad Shaped
+Figure 3: Safety Nash Equilibrium
+
+ 10000  15000  20000  25000  30000
+Percentage Behaviour Achieved
+Episode
+Good Shaped
+Not Shaped
+Bad Shaped
+Not Potential-Based
+Figure 4: Sub-Optimal Behaviour tional set of agents. These agents receive an additional reward on state transitions that is not potential based. Specifically they are rewarded 5, 10 and 30 upon entering states s1, s2 and s5 respectively. These agents converge to a joint policy representative of the sub-optimal behaviour.
+This has occurred because if additional rewards are not potentialbased they can change the Nash Equilibria of a SG.
+Finally, the learning performance of both sets of shaped agents favourably supports the use of potential-based reward shaping in MAS. The poorly shaped agents converge to the safety Nash Equilibrium after just 10,000 episodes whilst without shaping it takes agents 29,000 episodes to converge.
+More significantly, after only 2000 episodes agents receiving reward shaping from a good heuristic are more likely to achieve the optimal Nash Equilibrium than non-shaped agents ever will.
+6.
+CONCLUSION
+In conclusion, this paper shows how two fundamental papers in single-agent reward shaping [20, 33] can be extended to provide similar guarantees in multi-agent reinforcement learning.
+Specifically, we have proven that a potential-based shaped agent is still equivalent to an agent with initial Q-values set to the potential of each state regardless of how many exist within the same environment.
+Furthermore, we have also proven that rewarding any number of agents within a MAS with additional potentialbased rewards has no subsequent effect on the Nash Equilibria of the underlying SG.
+Potential-based reward shaping effects the exploration of the shaped agent. Therefore, it can change the joint policy converged upon as even just one agent’s modified exploration can sufficiently redirect the search of joint policy space to converge to a different point of equilibrium.
+Although the agents may now converge to a different joint policy, the latter of the two proofs guarantees that the new joint policy was also a goal of the unshaped agents.
+Whether the goal achieved is the Nash Equilibrium of highest global utility, is dependent on the agents’ learning algorithms. With multiple individual learners, no guarantee of convergence to the highest utility Nash Equilibrium is provided. However, potential-based reward shaping can, dependent on the heuristic, either increase or decrease the probability of converging to equilibria of higher global utility as demonstrated in our empirical study.
+Given a joint action learner guaranteed under fixed conditions to converge, such as NashQ [11], it is possible to construct similar proofs as those shown here. Agents learning by joint action and receiving potential-based reward shaping benefit from consistent Nash Equilibria, modified exploration to decrease the number of sub-optimal action decisions and guaranteed convergence.
+It is also the authors’ expectation that potential-based advice [8], an extension of potential-based reward shaping to include heuristics based on actions as well as states, could similarly be extended to guarantee consistent Nash Equilibria when applied to multi-agent reinforcement learning.
+Recent empirical work supports these expectations [7].
+The work here has been based entirely in fully observable problem domains, which some may consider uncharacteristic of MAS. However, by shaping agents based on the potential of observations (as opposed to fully observed states) the same arguments and proofs can be used to show similar theoretical expectations in partially observable problem domains. Namely, the Nash Equilibria of a partially observable problem domain would remain the same but the agents exploration will alter and so convergence may be to a different point of equilibrium or, given an unsuitable heuristic, may not converge at all.
+In closing, adding potential-based reward shaping to multiple individual learners does not alter the Nash Equilibria but can, provided suitable heuristics, increase the probability of convergence to a higher global utility and decrease the time to convergence.
+7.

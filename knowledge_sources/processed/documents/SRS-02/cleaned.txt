@@ -1,0 +1,380 @@
+Autonomous Intelligent
+Systems
+Li et al. Autonomous Intelligent Systems             (2023) 3:9  https://doi.org/10.1007/s43684-023-00054-6
+R E V I E W
+Open Access
+Reviews and prospects in satellite range scheduling problem
+Shuwei Li1, Qingyun Yu1* and Hao Ding2
+Abstract
+With the increasing number of space satellites, the demand for satellite communication (including maneuvering, command uploading and data downloading) has also grown significantly. However, the actual communication resources of ground station are relatively limited, which leads to an oversubscribed problem. How to make use of limited ground station resources to complete satellite communication requests more fully and efficiently in the strict visible time is the focus of satellite range scheduling research. This paper reviews and looks forward to the research on Satellite Range Scheduling Problem (SRSP). Firstly, SRSP is defined as the scheduling problem of establishing communication between satellites and ground stations, and the classification and development of SRSP are introduced. Then, this paper analyzes three common problem description models, and establishes a mathematical model based on the analysis of optimization objectives and constraints. Thirdly, this paper classifies and summarizes the common solving methods of SRSP, and analyzes their characteristics and application scenarios. Finally, combined with the work in this paper, the future research direction of SRSP is envisioned.
+Keywords: Satellite range scheduling, Communication resource scheduling, Scheduling algorithm, Research overview
+1 Introduction
+Currently, there are more than 5000 satellites in orbit around the world and the number is still increasing. They play an important role in geodesy, navigation, military reconnaissance, weather prediction and other areas, all of which require communication with remote ground stations. Different from the enormous number of satellite communication demands, ground station resources supporting satellite communication are relatively limited. Therefore, in order to ensure efficient communication between satellites and ground stations, satellite range scheduling problem has been proposed and widely studied.
+Regarding the understanding of satellite range scheduling problem, most scholars hold that it refers to the com-
+*Correspondence: qingyunyu@tongji.edu.cn
+1College of Electronics and Information Engineering, Tongji University,
+Shanghai, 201804, China
+Full list of author information is available at the end of the article munication scheduling between satellites and ground stations [1–4], while some believe that it includes satellite communication scheduling, earth observation scheduling and sensor scheduling [5]. This paper will adopt the former definition, that is, Satellite Range Scheduling Problem
+(SRSP) is a scheduling problem that establishes communication between satellites and ground stations by matching satellite communication tasks with available and viable ground stations, and this problem has been proved to be
+NP-complete [2]. Figure 1 shows the schematic diagram of the visible windows between satellites and ground stations in SRSP, where G1 and S1 can communicate under task constraints but G1 and S3 are invisible and cannot communicate. According to the number of resources, SRSP can be divided into Single Resource Range Scheduling Problem
+(SiRRSP) and Multiple Resource Range Scheduling Problem (MuRRSP) [6]. SiRRSP refers to the problem with only one ground station and several satellites, while MuRRSP to those with both multiple satellites and ground stations.
+Based on the scheduling mode, SRSP can be differenti-
+© The Author(s) 2023. Open Access This article is licensed under a Creative Commons Attribution 4.0 International License, which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if changes were made. The images or other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit http://creativecommons.org/licenses/by/4.0/.
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 2 of 15
+Figure 1 Schematic diagram of the visible windows between satellites and ground stations in SRSP ated between static scheduling and dynamic scheduling
+[7]. In terms of communication task type, SRSP can also be classified into satellite data transmission scheduling problem, multi-satellite TT&C scheduling problem, satellite downlink scheduling problem, satellite broadcast scheduling problem, etc.
+In the 1990s, Gooley [8] proposed SRSP in the U.S. Air
+Force Satellite Control Network (AFSCN) and established
+Mixed Integer Programming (MIP) model to generate 24hour scheduling scheme. Parish [9] adopted classical genetic algorithm to solve SRSP. Since then, this problem has been studied more extensively. Some deterministic algorithms, such as dynamic programming [10] and Lagrangian relation [11, 12], have been used for finding the optimal solution under simple constraints. As the problem scale, constraints and complexity increase, algorithms such as local search [13, 14], evolutionary algorithm [4,
+15, 16] and neural networks [17, 18] have been more frequently applied to this problem. At present, the research of SRSP mainly focuses on the algorithm improvement under different scheduling scenarios and the simulation optimization of real cases.
+This paper focuses on SRSP and is organized as follows. Section 1 introduces the definition, classification and development of SRSP. Section 2 analyzes three common problem description models of SRSP and establishes a mathematical model based on the summary of common objectives and constraints. Section 3 summarizes the scheduling algorithms commonly used in SRSP and analyzes the characteristics of those algorithms. Section 4 looks ahead to the future research in SRSP based on the current status. Finally, a conclusion is shown in Sect. 5.
+2 Description of SRSP
+2.1 Modeling method in SRSP
+Modeling of SRSP uses mathematical tools to describe the resource and demand information, optimization objectives and complex constraints associated with the problem. Currently, there are three main types of SRSP modeling, namely, mathematical programming model, constraint satisfaction model and graph theory model.
+Mathematical programming model is to use linear programming model or nonlinear programming model to describe problem based on operational research knowledge, most of which uses linear programming model. In fact, early studies of SRSP were based on Mixed Integer
+Programming (MIP) model [1, 8, 19]. Subsequently, MIP model has been widely applied to various SRSP scenarios, such as SiRRSP [20], MuRRSP [21], multi-satellite TT&C scheduling [22], data transmission scheduling [23], satellite broadcast scheduling [24] and hybrid scheduling of observation and communication [13, 25–28]. There were also many studies [11, 16, 29] which directly used 0-1 programming model to solve SRSP. Jin, et al. [30] simplified the nonlinear functional model and established a 0-1 programming model for solving ground station resource scheduling. Mathematical programming model is relatively mature and can clearly describe the objectives and constraints of the problem, which is widely used in SRSP modeling.
+And it can be solved by operations research methods or intelligent algorithms. However, mathematical programming models of some problems are relatively complex and difficult to solve.
+Constraint Satisfaction Problem (CSP) model consists of decision variables with their domains and constraints that define the relationship between variables. SRSP is a kind of
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 3 of 15 complex CSP whose modeling focuses on the expression of constraints, so SRSP can be also described as CSP model.
+Liu, et al. [31] established a CSP model for multi-satellite scheduling. CSP model has been more frequently applied in modeling of multi-satellite TT&C scheduling problem
+[32–37]. Jin [32] established a semiring CSP model with changeable structure; Zhu, et al. [34] added three heuristic principles to CSP model considering high frequency complex constraints; and Du, et al. [36] built a unified satellite task scheduling model through CSP model. CSP model was also used in satellite data relay scheduling [37]. CSP model has a clear structural level which helps to clearly describe the specific scenario of SRSP, and it can realize the separation of modeling and solving process [21]. However, establishment of CSP model usually requires a clear overall understanding of constraints, and the model will be difficult to solve when the problem scale becomes large.
+Graph theory model is to describe or solve the problem using graph theory. The common graph theory models in
+SRSP include Petri net, graph coloring theory and conflict construction graph. Wang, et al. [38] designed Timing Constraint Colored Petri nets containing nine-tuples to establish operation model of multi-satellite-ground station system. Zufferey, et al. [39] likened MuRRSP to the graph coloring problem and designed TS-MuRRSP algorithm to solve the problem. Conflict construction graphs
+[40, 41] based on visible arcs and conflicts were designed and combined with ant colony optimization algorithm to solve TT&C scheduling problem. In satellite data transmission scheduling, Wang and Zhang [42] built a resource layout to represent data flow in resources, while Chen and
+Wu [43] constructed an arc model solution construction graph and proposed an ant colony optimization algorithm based on this graph. Graph theory model is more intuitive and interpretable, but it is difficult to reasonably represent various complex constraints in SRSP.
+2.2 Mathematical description of SRSP
+At present, the most widely used model of SRSP in academia and industry is mathematical programming model, which will be further described below.
+2.2.1 Problem assumptions and variable definitions
+Currently, academia and industry usually consider assumptions about satellite tasks, ground station resources and visible information when dealing with SRSP. In order to describe SRSP more clearly, general assumptions are listed below.
+1) Information related to the satellite tasks is known, such as total number, task duration and task benefit.
+2) Information about ground stations is known, including their distribution and quantity, the types of tasks they can support and their priorities.
+3) The visible time periods between satellites and ground stations are known.
+4) Communication tasks once started will not be interrupted or stopped unexpectedly.
+Then, the relevant variables are defined, as shown in Table 1.
+Here, S = {1,2,...,i,...,|S|} represents the satellites set made up of |S| satellites, and G = {1,2,...,j,...,|G|} is the ground station set composed of |G| ground stations. R =
+{1,2,...,r,...,|R|} is the task set consisting of |R| satellite task requests, where r = {sID,ts,te,dur,p} represents that satellite sID needs to complete the task r with duration dur in the time interval of [ts,te].
+Table 1 Variable definitions of SRSP
+Definition
+Description
+S
+Set of satellites i
+Satellite index, i ∈S
+Oi
+Set of orbits of satellite i
+G
+Set of ground stations j
+Ground station index, j ∈G
+Tj
+Sum of all distributable time windows of j
+T
+Time period for the schedule t
+Some moment of the scheduling time period
+VTWijk
+Visible Time Windows between the orbit k of i and j, k ∈Oi sijk, eijk
+Start and end time of VTWijk
+R
+Set of satellite task requests r
+Satellite task index, r ∈R pr
+Priority of r dr
+Minimum duration for r sr, er
+Actual start and end time of r
+tj
+Transition time between two tasks for j xt ij
+State variable, indicating whether i and j are interacting at t, xt ij = 1 represents yes, xt ij = 0 represents no.
+xr ijk
+Decision variable, indicating whether i and j carry out r in VTWijk, xr ijk = 1 represents yes, xr ijk = 0 represents no.
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 4 of 15
+2.2.2 Optimization objectives
+Different optimization objectives will be formulated for different research scenarios, which commonly include maximizing the sum of successful task priority, maximizing the task completion rate, maximizing the effective duration, maximizing the utilization of ground stations, maximizing the resource utilization equilibrium of ground station, minimizing the ground station fragmentation time
+[44–48].
+Maximization of the sum of successful task priority is to maximize the sum of priorities of all completed communication tasks within the specified scheduling period T, as shown in Equation (1). When pr = 1, maximizing the sum of successful task priority is equivalent to maximizing the number of completed tasks.
+max
+ r∈R pr · xr ijk.
+(1)
+Task completion rate maximization means to maximize the ratio between the number of completed tasks and the total number of communication tasks within the specified scheduling period T, as shown in Equation (2) below.
+Some studies focus on minimizing the number of task conflicts, which is almost equivalent to maximizing the task completion rate.
+max
+ r∈R xr ijk
+|R|
+.
+(2)
+Effective duration maximization means to maximize the sum of the effective working time of all communication tasks within the specified scheduling period T, which is shown in Equation (3). Where, ter – tsr represents the difference between the actual end time and the actual start time of satellite task r, namely, the actual effective working time of task r.
+max
+ r∈R
+(er – sr).
+(3)
+Maximization of the utilization rate of ground stations is to maximize the ratio between the sum of the effective working time of all communication tasks and the sum of the duration of the distributable time windows of all ground stations within the specified scheduling period T, as shown in Equation (4). Where,  j∈G Tj means the sum of duration of the distributable time windows of all ground stations.
+max
+ r∈R(er – sr)
+ j∈G Tj
+.
+(4)
+Maximizing the resource utilization equilibrium of ground station means minimizing the variance of utilization of all ground stations within the specified scheduling period T, as shown in Equation (5) below. Where, uj is the utilization rate of ground station j, which can be calculated by uj =
+ i∈S
+ k∈Oi(er–sr)xr ijk
+Tj
+; u calculated by u =
+ j∈G uj
+|G| is the average ground station utilization rate.
+min
+ j∈G(uj – u)2
+|G|
+.
+(5)
+Minimization of the ground station fragmentation time refers to minimizing the sum of the short non-working time of all ground stations, which is shown in Equation
+(6). The fragmentation time represents the short period of downtime between the completion of two tasks in the same ground station. In Equation (6), r and r′ are the two tasks successively executed on ground station j, sr ijk –er′ i′jk′ –
+tj represents the short time interval between the two tasks that ground station j does not work. F(x) is the fragmentation time calculation function, and
+F(x) =
+ x,
+0 ≤x ≤Tf ,
+0, else, where Tf represents the upper limit of the duration interval that can be defined as fragmentation time.
+min
+ j∈G
+ r,r′∈R
+F
+ sr ijk – er′ i′jk′ – tj
+
+· xr ijk · xr′ i′jk′
+
+.
+(6)
+The above optimization objectives are commonly considered in industry and academia, especially the maximization of the sum of successful task priority. The focus and number of optimization objectives concerned by different studies may be different. For example, optimization objectives of data download scheduling often include maximizing data downloading amount, dynamic rescheduling will also pay attention to minimizing scheduling scheme changes, and many multi-objective optimization problems will consider the optimization objectives related to the ground station load balancing.
+2.2.3 Problem constraints
+SRSP is a resource optimization problem with multiconstraint. The constraints mainly come from the demand of communication tasks and the resource limitation of satellites and ground stations. Task demand constraints refer to the basic constraints inherent in communication tasks, including execution duration constraint, execution period constraint, time interval constraint, periodic constraint, lap interval constraint and task priority constraint. Resource constraints are mainly related to the resource hardware constraints of satellites and ground stations, such as visibility constraint, elevation constraint, resource matching constraint, connection uniqueness constraint and transition constraint. Table 2 summarizes the
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 5 of 15
+Table 2 Common constraints of SRSP
+Type
+Constraint
+Implication
+Task demand constraints
+Execution duration constraint
+Task execution time must be greater than the minimum duration (Task minimum effective arc segment constraint)
+Execution period constraint
+Tasks must be completed within the specified execution period
+Execution times number constraint
+Tasks are divided into a finite number of sub-tasks and the number is no greater than the execution upper limit times. If the number is set to 1, the satellite tasks must be completed continuously at one time
+Time interval constraint
+Including the minimum time interval constraint and the maximum time interval constraint. The time interval of two continuous tasks in the same satellite must be no less than the minimum time interval and no greater than the maximum time interval
+Periodic constraint
+Satellites must complete a fixed times number (or duration, or type) of tasks over a periodic period
+Lap interval constraint
+Including the minimum lap interval constraint and the maximum lap interval constraint. The lap difference of two continuous tasks in the same satellite must be no less than the minimum lap interval and no greater than the maximum lap interval
+Task priority constraint
+Tasks with higher priorities are completed first
+Resource constraints
+Visibility constraint
+Tasks must be carried out within the visible time windows between satellites and ground stations
+Elevation constraint
+The elevation angle of the task execution arc must be greater than the minimum elevation angle
+Resource matching constraint
+Tasks can only be completed by the ground station resources that can be matched by the corresponding satellite, including but not limited to the matching of task types and frequency bands
+Connection uniqueness constraint
+Including the satellite connection uniqueness and the ground station connection uniqueness. They respectively mean that the same satellite can only interact with one ground station at a time, and the same ground station can only interact with one satellite at a time
+Transition constraint
+Transition time must be reserved between the interval of two continuous tasks in the same ground station
+Figure 2 Schematic diagram of the common constraints in SRSP common constraints of this problem, and Fig. 2 shows the schematic diagram of the common constraints in SRSP.
+As shown in Fig. 2, task demand constraints are marked in red and resource constraints are marked in blue. Academic and industrial researches on SRSP usually consider execution period constraint, visibility constraint, connection uniqueness constraint and transition constraint.
+However, constraints may be more complex and personalized in practical engineering applications. In addition to the above common constraints, there may also be con-
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 6 of 15 straints such as specified equipment constraint, entry-exit task constraint and ascend-deascend orbit task constraint.
+2.2.4 Problem description
+Combined with the above discussion, the SRSP can be described in general. It is assumed that a group of satellite communication tasks need to be allocated to a group of ground stations within a given scheduling time period. The optimization objectives are to maximize the sum of successful task priority and the utilization rate of ground station, and all communication tasks can only be executed at a once. The constraints include visibility constraint, connection uniqueness constraint, execution duration constraint and transition constraint. Then the multi-objective problem can be described by the following mathematical model.
+maxw1 ·
+ r∈R pr · xr ijk + w2 ·
+ r∈R(er – sr)
+ j∈G Tj
+(7) s.t.
+ j∈G
+ i∈S
+ k∈Oi xr ijk ≤1,
+∀r ∈R,
+(8)
+ j∈G xt ij ≤1,
+∀t ∈T,∀i ∈S,
+(9)
+ i∈S xt ij ≤1,
+∀t ∈T,∀j ∈G,
+(10) xr ijk(sr – sijk) ≥0,
+∀r ∈R,∀i ∈S,∀k ∈Oi,∀j ∈G,
+(11) xr ijk(eijk – er) ≥0,
+∀r ∈R,∀i ∈S,∀k ∈Oi,∀j ∈G,
+(12) xr ijk(er – sr – dr) ≥0,
+∀r ∈R,∀i ∈S,∀k ∈Oi,∀j ∈G,
+(13) xr′ i′jk′ · er′ ≤xr ijk(sr – tj), xr′ i′jk′ = xr ijk = 1, r,r′ ∈R,i,i′ ∈S,k ∈Oi,k′ ∈Oi′,
+(14) xr ijk ∈{0,1}.
+(15)
+In Equation (7), w1 and w2 represent the weights of two objectives. Equation (8) is execution times number constraint, indicating that a task can be completed at most once. Equations (9) and (10) are connection uniqueness constraints. Equation (9) means that each satellite can only interact with one ground station at a time, while Equation
+(10) represents that each ground station can only interact with one satellite at a time. Equations (11) and (12) are visibility constraints, which indicate that the task’s actual start
+(end) time should be greater (less) than the start (end) time of the corresponding visible time window. Equation (13) is execution duration constraint. Equation (14) is transition constraint. Equation (15) represents the domain of the values of decision variable.
+Due to the personalization of different satellite-ground station systems and tasks, description of SRSP is also different. In practical application modeling, it is necessary to combine application scenarios, design appropriate decision variables, and adjust relevant optimization objectives and constraints.
+3 Solving methods of SRSP
+Since SRSP was proposed, many algorithms have been studied and applied to solve this problem. These algorithms can be divided into deterministic algorithm and random search algorithm according to the search accuracy. Random search algorithm can also be divided into heuristic algorithm, meta-heuristic algorithm, artificial intelligence algorithm, and so on. Figure 3 shows the classification of algorithms commonly used to solve SRSP, and
+Table 3 summarizes their characteristics.
+3.1 Deterministic algorithm
+Deterministic algorithm searches the solution space globally, so it always produces the same output for a given particular input, such as branch and bound algorithm, dynamic programming.
+Branch and Bound (B&B) algorithm was first proposed by Lang and Doig [49] for solving linear programming problem. It reduces the solution space to obtain the optimal solution by branching, pruning and delimiting, and it can be adopted in solving SRSP with small scale. Rigo,
+Figure 3 Common solving algorithms and classification of SRSP
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 7 of 15
+Table 3 Common solving algorithms of SRSP and their characteristics
+Classification
+Algorithm
+Related Work
+Advantage
+Shortcoming
+Deterministic
+Algorithm
+Branch and Bound
+[11, 12, 50, 51]
+Global search, stable and high precision.
+Limited ability to handle complex constraints.
+Dynamic Programming
+[10, 52]
+Heuritic Algorithm
+Greedy Search
+[53–55]
+Simple and intuitive, used as benchmark or to help improve other algorithms.
+Easy to fall into local optimal, unstable.
+Hill Climbing
+[56–59]
+Local Search Algorithm
+Simulated Anealing
+[13, 48, 60–64]
+Simple and flexible, with global optimization capability.
+Sensitive to parameter settings.
+Tabu Search
+[24, 39, 48, 64–68]
+With global optimization capability.
+Sensitive to initial solution.
+Others
+[14, 69–71]
+Evolutionary Algorithm
+Genetic Algorithm
+[16, 59, 72–88]
+Individual has randomness, algorithm has strong search ability and strong expansibility.
+Convergence rate is slow and sensitive to parameter settings and initial solution.
+Ant Colony Optimization
+[41, 89–95]
+With strong robustness and certain optimization ability.
+Convergence rate is slow and optimization results are not so good under complex constraints.
+Particle Swarm Optimization
+[96–99]
+Easy to implement, with good convergence and robustness.
+Application in SRSP requires discretization and sensitive to parameter settings.
+Others
+[100–105]
+Artificial Intelligent
+Algorithm
+Artificial Neural Networks
+[106–109]
+With independent learning ability and can be used in offline and prediction scenarios.
+Calculation cost is high and sensitive to parameter settings.
+Reinforce Learning
+[110–113]
+With global optimization and independent learning ability.
+Modeling is complex, convergence rate is slow and the solution scale is small.
+Others
+[114, 115] et al. [50] proposed a branch and price algorithm based on the idea of B&B to solve the MILP of SRSP. And Wang and Reinelt [51] also adopted this algorithm to solve integrated scheduling problem of observations and downloads. Due to the complexity of SRSP constraints and the large scale of the problem, Lagrange relaxation method has been increasingly applied to solve the problem boundary.
+Marinelli, et al. [11] described SRSP as a 0-1 integer programming model and solved it using Lagrange relaxation.
+Brown, et al. [12] used Lagrange relaxation method to develop the boundary of multi-objective optimization problem.
+Dynamic Programming (DP) algorithm is a common method in operations research, which was proposed by
+Bellman in the 1950s [116, 117]. Its core idea is to divide a problem into multiple related sub-problems and gradually obtain the optimal solution. Liu, et al. [52] adopted
+DP to solve SiRRSP with task priority and transition time constraint. For large-scale scheduling, Liu, et al. [10] decomposed problem into a multi-stage decision process based on the identification of critical resources, and designed a route-reduction-based DP to alleviate the dimension disaster. Although the application of DP in SRSP is not as much as that in earth observation satellite scheduling problem [118–121], the division concept of DP still provides idea for problem solving [122].
+Deterministic algorithm guarantees the optimal solution by searching the solution space completely, and has the advantages of stability and high precision. However, it has strict requirements on the form of the problem, and its ability to deal with complex constraints is limited. Moreover, with the increase of problem scale, the solving space and time will increase exponentially, so it is more suitable for solving relatively small-scale problems. Therefore, the application of deterministic algorithm in complex SRSP has been less studied.
+3.2 Heuristic algorithm
+Heuristic algorithm refers to those algorithms constructed based on intuition or experience, which give an approximate optimal solution to a problem within an acceptable cost (i.e., computing time and space). The deviation de-
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 8 of 15 gree between the approximate solution and the real optimal solution may not be predicted in advance. Heuristic algorithm is an effective algorithm suitable for solving SRSP with high constraints and large-scale, including greedy search algorithm and hill-climbing algorithm.
+Greedy Search (GS) algorithm selects an optimal strategy in each exploration based on the idea of constructing an optimal solution step by step. GS algorithm can realize local optimization and has relatively high execution efficiency, so it can be used to prioritize some specific optimization. Burrowbridg [53] applied Greedy ActivitySelector algorithm to the resource allocation problem of
+LEO satellites network, and pointed out that SiRRSP can be solved in polynomial time when only LEO satellites are considered. Zhang [54] adopted greedy algorithm to assign ground station resource combinations to satellite tasks according to priority, and verified in small-scale scenario simulation. An on-line scheduling algorithm based on greedy strategy was designed in geosynchronous data relay system for data download scheduling, which considered throughput, fairness, and service quality [123]. GS algorithm is simple and fast, which saves many exhaustive operations compared with deterministic algorithm, and can effectively solve SiRRSP without priority [124]. However, GS is also prone to fall into local “trap”, and it is difficult to obtain high-quality optimal solution when dealing with complex SRSP. Therefore, greedy thought is often used to help improve the ability of other algorithms
+[55, 123, 125, 126].
+Hill-Climbing Algorithm (HCA) is essentially a greedy search algorithm. Its principle is to select the optimal solution from the adjacent solution space at the current location until local optimal is reached. HCA is simple, flexible and easy to implement, but the quality of its optimal solution is closely related to the initial solution and the neighborhood structure, so it is easy to fall into local optimal. In
+SRSP, HCA is often used as the benchmark algorithm for comparison experiments with other algorithms [56–58], or to improve the performance of other algorithms [59].
+Heuristic algorithm is simple and intuitive, and can find a better solution in a relatively acceptable time, but the algorithm is not stable enough, and it is easy to fall into local optimal. The improvement of heuristic algorithm mostly focuses on adding some random factors to specific scenarios or combining with other algorithms to reduce the probability of falling into local “trap” and to improve the overall solving efficiency of the algorithm.
+3.3 Meta-heuristic algorithm
+Meta-Heuristic algorithm is an improvement of heuristic algorithm. It is a combination of stochastic strategy and local search, which includes local search algorithm and evolutionary algorithm. Meta-heuristic algorithm is the most widely studied algorithm in solving SRSP.
+3.3.1 Local search algorithm
+The basic principle of Local Search (LS) algorithm is to iterate in the adjacent solution until it cannot be optimized.
+Common LS algorithm includes simulated annealing algorithm, tabu search algorithm and variable neighborhood search algorithm.
+Simulated Annealing (SA) algorithm is a local research algorithm proposed by Metropolis, et al. in 1953 [127].
+SA algorithm adds a random factor into search to jump out of local optimal, that is, according to the probability of temperature change to accept the poor solution. SA algorithm maintains the simple and flexible characteristics of LS algorithm and has good asymptotic convergence, so SA algorithm is commonly employed to solve SRSP.
+Xhafa, et al. [60] adopted SA algorithm to solve the ground station resource scheduling scheme and verified by three different sizes examples. In satellite downlink scheduling problem, SA algorithm performed well in several search algorithms [61], while Liu, et al. [48] proposed an SA algorithm with tabu list and start time decision for better selection efficiency and shorter waiting time. For the integrated scheduling problem of imaging and data transmission, Zhu, et al. [13] established an MILP model with the aid of directed acyclic graph tools, and designed a twostage algorithm by combining SA algorithm and genetic algorithm. In practice, Planet designed a software based on SA algorithm for large-scale constellation scheduling, which has been used as a benchmark for academic research [62]. SA algorithm is widely used in solving complex combinatorial optimization problems [63], and it is often combined with other algorithms to improve the overall algorithm capability [13, 48, 64].
+Tabu Search (TS) algorithm, first proposed by Glover
+[128, 129] in 1986, is a search algorithm with memory strategy. TS algorithm is an extension of local neighborhood search. It introduces a flexible storage structure and corresponding tabu criteria (tabu table) to avoid temporary circuitous search, and has global optimization ability. In ground station scheduling problem, Xhafa, et al.
+[65] adopted TS algorithm to generate scheduling scheme when considering several objective functions, and verified algorithm effectiveness in a set of instances with varying sizes. Zufferey, et al. [39] improved the TS algorithm inspired by tabu graph coloring algorithm for solving MuRRSP. Luo, et al. [66] added tabu rules to the rescheduling strategy for improving prescheduling quality, which helped to quickly solve SRSP. In data transmission scheduling, TS algorithm was combined with genetic algorithm [67], which not only improved the solution quality, but also enhanced the accuracy of convergence and optimization ability. Actually, the combination of multiple algorithms is an important research direction for solving
+SRSP in recent years, and the idea of TS is often adopted to combine with other algorithms to improve the overall optimization efficiency [24, 48, 64, 68].
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 9 of 15
+With the deepening of SRSP research, the improvement of LS algorithm is also expanding. To solve satellite data transmission scheduling problem, Zhao, et al. [69] studied three pruning strategies and combined them with the LS algorithm. Zufferey and Vasquez [14] proposed a generalized Consistent Neighborhood Search (CNS) algorithm based on LS for SRSP. Adaptive large neighborhood search algorithm combined with heuristic rules also proved effective in solving large scale SRSP [70] and satellite data transmission scheduling problem [71].
+3.3.2 Evolutionary algorithm
+Evolutionary algorithm belongs to meta-heuristic algorithm which simulates the evolution mechanism and behavior of natural biological population and perform iterative search. Evolutionary algorithm has strong robustness and adaptability, and can deal with complex combinatorial optimization problems. It is widely used in SRSP. Common evolutionary algorithm includes genetic algorithm, ant colony optimization algorithm and particle swarm optimization algorithm.
+Genetic Algorithm (GA) was first designed by Holland
+[130] in 1975 according to the law of biological evolution. GA has strong search ability and strong expansibility, and avoids falling into local optimal by introducing mutation mechanism. Therefore, GA has great potential in solving satellite scheduling problems [72], and it is one of the most widely studied algorithms at present. Soma, et al. [73] used GA for weekly scheduling in multi-satellite TT&C scheduling problem, and designed a GA-based scheduling software IMPACT. Xhafa, et al. verified the effectiveness of GA in solving SiRRSP [74], and designed Steady
+State Genetic Algorithm through minority selection and partial substitution [75]. In GA encoding, station ID coding method [16], two-hierarchical encoding method [72], multi-dimensional encoding method [76] and two-stage coding method [77] were proposed for different MuRRSP application scenarios. In population iteration, quantum rotation gates and quantum crossover [78] and learning mechanism and non-dominated sorting mechanism [79] were introduced into GA to improve population quality when solving single objective and multi-objective SRSP.
+In order to solve different SRSP, scholars have improved the application of GA in different directions. On the one hand, struggle GA [80], adaptive GA [81, 82] and coevolutionary algorithm [83] were proposed to prevent premature convergence of GA. On the other hand, GA-PE
+[84] and GA with a rote learning operator [85] were designed for improving optimization efficiency. Moreover, due to its strong expansibility, GA was often combined with other algorithms for higher efficiency. HCA was introduced in GA to optimize the new generation of individuals in satellite-ground mission scheduling [59]. GATS with Tabu search operators was designed based on a general encoding method in TT&C scheduling problem [86].
+Neighborhood search [87, 88] was also applied in GA to improve local optimization ability in SRSP. Figure 4 shows some of the improvement of GA in SRSP’s application by category.
+Ant Colony Optimization (ACO) algorithm is a bionic algorithm proposed by Colorni, et al. [131] and Dorigo
+[132] in the early 1990s to simulate the behavior of ant colony in finding the optimal path. ACO algorithm is a common method to solve SRSP, and it has been studied and applied in satellite broadcasting scheduling [89] and satellite TT&C scheduling [41, 90–95]. SRSP can be transformed into a minimization problem and mapped to a graph, and then ACO can be applied to solve the path (solution). For example, a simple ACO algorithm [41] with constant parameters was applied in a conflict construction graph model for scheduling. Most of the improvement of ACO algorithm focused on pheromone update [90], such as two-stage update strategy [90, 91] and guidancesolution based update strategy [92]. For TT&C scheduling problem, Gong, et al. [93] introduced crossover operators into ACO to avoid falling into local optimality in view of the low optimization efficiency and premature convergence; Li, et al. [94] combined GA and ACO algorithm to improve the low optimization efficiency caused by the lack of pheromones in the early stage; and Zhang, et al.
+[95] designed concurrent ACO algorithm which could obtain concurrent global search capability to avoid premature convergence.
+Particle Swarm Optimization (PSO) algorithm is an evolutionary algorithm proposed by Eberhart and Kennedy
+[133] in 1995. PSO is easy to implement, and has good convergence and robustness. In satellite broadcast scheduling problem, Xia, et al. [96] introduced convergent factor, inertia weight and constraint factor on the basis of PSO and verified the solving efficiency of the algorithm in smallscale cases. Chang and Wu [97] introduced velocity direction controllable regulation and velocity scale controllable regulation to prevent premature convergence of PSO in satellite data transmission scheduling. PSO algorithm was also combined with heuristic methods to realize the integrated scheduling of satellite data transmission and TT&C tasks [98]. And a novel algorithm based on quantum discrete particle swarm optimization was designed for solving data transmission scheduling problem [99].
+In addition to the above common evolutionary algorithms, some new algorithms have also been applied to solve SRSP in recent years. The learning-based artificial bee colony algorithm was effective in solving SRSP [100].
+Differential evolution algorithm was applied to solve satellite broadcast scheduling problem [101, 102] and satellite data transmission scheduling problem [103]. The improved fireworks algorithm was also validated in satellite
+TT&C scheduling [104] and satellite link scheduling [105].
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 10 of 15
+Figure 4 Some improvement of GA in SRSP
+Meta-heuristic algorithm can jump out of the local optimal solution and find the optimal solution with high quality within a reasonable time. Moreover, the algorithm is applicable to a variety of problem models and can solve largescale problems, so meta-heuristic algorithm is the most commonly used algorithm in the study of SRSP. Metaheuristic optimization is mainly to improve some specific operations of the algorithm based on the problem, or to combine with other algorithms to increase the overall performance.
+3.4 Artificial intelligent algorithm
+Artificial Intelligent (AI) algorithm refers to those algorithms inspired by natural laws to solve problems according to their principles. In view of the autonomous learning ability and multi-scene adaptability of the algorithm, AI algorithm such as neural network and reinforcement learning can be used to assist the study of SRSP.
+Artificial Neural Networks (ANN), or neural networks for short, is an algorithm model that simulates the behavior characteristics of animal neural networks to process information step by step in parallel. Funabiki and Nishikawa
+[106] used the binary Hopfield neural network approach to develop satellite broadcast schedules. Meng, et al. [29] designed deep neural networks to predict task scheduling rates based on the accumulated historical data and constructed a scheduling system for problem solving. In solving satellite downlink replanning problem, Song, et al.
+[107] first used BP neural network to complete the prediction of a given task set, and then combined the improved
+GA and LS algorithm to obtain high-quality rescheduling schemes. In antenna scheduling problem, Sun, et al. [108] adopted LSTM to extract the antenna using rules from historical data and generated the initial scheduling scheme, and then used heuristic methods to correct it for less conflicts and higher resource utilization. In TT&C scheduling problem, Li, et al. [109] carried out characteristic analysis on the factor information and took the discretized important attributes or constraints as eigenvalues, then constructed deep neural networks based on the extracted eigenvalues and scheduling characteristics.
+Reinforcement Learning (RL) was first proposed by Minsky in 1961 [134], and it is an optimal algorithm that agents learn optimal strategies by interacting with the environment to obtain rewards and punishments. In solving SRSP,
+Ou, et al. [110] firstly used DRL to complete satellite task assignment and then solved single-antenna scheduling by heuristic scheduling method. For emergency scheduling,
+Q-learning [111] was utilized as the learning model to help design mono-layer strategy and multi-layer strategy in dealing with the urgent requests from high-orbit satellites. In the heterogeneous TT&C network resource joint scheduling problem, Xue, et al. [112] established a DQN solution framework based on the design of TT&C status, action and instant reward to improve task satisfaction rate and resource utilization efficiency. Although RL has been
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 11 of 15 widely studied in other combinatorial optimization problems, there is little research on satellite scheduling problem. Even in the study of satellite observation planning which is more widely studied than SRSP, the application of DRL is still in its infancy [113]. Therefore, there is still a large space for the application of RL in SRSP solving.
+AI algorithm has strong prediction, self-learning and computing capabilities, and can also be used to assist in solving SRSP. In addition to the above common methods,
+SVM [114] and K-means methods [115] have been also applied in SRSP. However, probably due to the complex constraints of SRSP, there are relatively few studies that rely solely on AI algorithms to solve this problem. Therefore, in the future, more in-depth research can be conducted on how to make AI algorithm play an important role in solving relevant problems.
+4 Prospects
+On the basis of current research, combined with the development of satellite communication, future research on
+SRSP can be carried out from the perspectives of model improvement, algorithm optimization and scenario expansion.
+4.1 Problem model improvement
+At present, most of the reaerch on SRSP focuses on some specific scenarios with certain optimization objectives and constraints, but there are usually more constraints and uncertainties in practical. Therefore, the modeling of SRSP in the future can pay more attention to the actual constraints and uncertainties, so as to enhance the practical application value of SRSP research.
+Keeping the constraint update of the model is conducive to improving the timeliness of theoretical research. In the future, the task constraints, resource constraints and timeliness constraints of the model can be continuously improved to make the theoretical research more applicable for practical application. Specifically, the above constraints include but are not limited to task timing constraint, task cooperation and split constraint, satellite data storage constraint, satellite heterogeneity constraint, satellite computing capacity constraint and ground station maintenance constraint.
+Considering uncertainties contributes to elevating system robustness. Uncertainty factors can be considered from both internal and external aspects. Internal uncertainty factors include on-board energy and retention uncertainties and the instability of satellite-ground communication. External uncertainty factors include task demand uncertainty and weather uncertainty. There are three ways to deal with uncertainty factors. One is to take uncertainty factors as necessary constraints, the other is to minimize the influence of uncertainty factors as optimization objectives, and the third is to enhance the rescheduling mechanism for uncertainty factors.
+4.2 Solving algorithm optimization
+The algorithm research on SRSP has obtained fruitful research results, but with the update of satellite communication scenario and the expansion of communication demand, the algorithm solution will face greater challenges.
+Therefore, the solving algorithm of SRSP can be optimized from the perspectives of improving efficiency and innovating methods in the future.
+Improvement of algorithm computation efficiency is of great significance for improving communication scheduling efficiency. Currently, the number of satellites in space is increasing rapidly, and some constellations even contain more than 10,000 satellites. The demand of large-scale calculation brings great challenge to the study of satellite communication scheduling algorithm. Therefore, one direction of SRSP algorithm research is to improve the algorithm computation speed, robustness and timeliness.
+In the future, algorithm efficiency can be elevated by improving or innovating the algorithm mechanism combined with the actual application scenario. For example, facing the challenge of large-scale computing, it is necessary to improve the algorithm for task coordination of heterogeneous satellites in the system. It can also be combined with existing methods to design complementary algorithms.
+Algorithm method innovation has broad research prospects. Current research of SRSP mainly focuses on the meta-heuristic algorithm, and the study of AI algorithm is still in the preliminary stage. Therefore, the application of AI algorithms in SRSP can be further explored in the future, including the study of AI algorithm as the main scheduling method and as auxiliary method.
+4.3 Application scenario expansion
+With the increase of satellite communication load capacity and communication demand, the research scenarios of satellite communication scheduling become more diversified and dynamic. Further research can be explored from the aspects of multi-application scenario and dynamic scheduling.
+Hybrid scheduling scenario research is an effective means to enhance the practical efficiency, because satellite communication is often a part of the satellite application. Actually, the research of hybrid scheduling scenario has become the current trend, such as integrated scheduling of imaging and data transmission, satellite-terrestrial integrated relay networks scheduling and satellite constellation scheduling. Future research on hybrid application scenario can be carried out from the perspective of model generalization and algorithm robustness improvement or overall network planning.
+Dynamic scenario is an important research direction in application. With the popularization of satellite applications, more and more dynamic scenarios are bound to appear, so the requirement for system dynamic response ca-
+
+Li et al. Autonomous Intelligent Systems             (2023) 3:9 
+Page 12 of 15 pability is getting higher and higher. The research on dynamic scenario of satellite communication scheduling is to improve the dynamic response ability of the whole system. On the one hand, the system emergency scheduling algorithm can be improved to raise the response efficiency; on the other hand, it is possible to design the overall autonomous mechanism (such as rolling planning mechanism) to improve the overall robustness of the system.
+In short, SRSP plays an important role in practical application of satellite systems. Future research can constantly modify the problem model, optimize the solving algorithm and expand the application scenarios based on the actual problem characteristics and needs, so that satellite scheduling technology can continue to develop in the direction of intelligence and timeliness.
+5 Conclusion
+SRSP is an NP-hard problem based on visible time window which studies communication task scheduling between satellites and ground stations. This paper reviews the literature of SRSP in recent decades, and then summarizes the development, problem description, solving algorithms and prospects of SRSP. SRSP has been studied more and more widely since it was first proposed in AFSCN in the 1990s.
+At present, MIP model is the most commonly used model to describe SRSP, and meta-heuristic algorithm (such as
+GA) is the most widely studied algorithm. Considering the current research status and practical diverse application scenarios, the future research of SRSP can be optimized from the aspects of model improvement, algorithm optimization and application expansion.

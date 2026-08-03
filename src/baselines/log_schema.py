@@ -4,7 +4,7 @@ from copy import deepcopy
 import math
 
 
-LOG_SCHEMA_VERSION = "2.0"
+LOG_SCHEMA_VERSION = "2.1"
 
 
 def resolve_reward_log_semantics(
@@ -47,6 +47,9 @@ def resolve_reward_log_semantics(
     reward_spec_id = getattr(reward_model, "reward_spec_id", None)
     if reward_spec_id is not None:
         fields["reward_spec_id"] = reward_spec_id
+    weight_metadata = getattr(reward_model, "weight_metadata", None)
+    if weight_metadata is not None:
+        fields["llm_reward_weight_metadata"] = deepcopy(weight_metadata)
     return fields
 
 
@@ -94,9 +97,10 @@ def normalize_episode_log_record(record):
     """只读归一化新旧日志，不改写原字典或源文件。"""
     source = deepcopy(record)
     version = source.get("log_schema_version")
-    if version == LOG_SCHEMA_VERSION:
+    if version in {LOG_SCHEMA_VERSION, "2.0"}:
         _validate_normalized_record(source)
-        source["source_log_schema_version"] = LOG_SCHEMA_VERSION
+        source["source_log_schema_version"] = version
+        source["log_schema_version"] = LOG_SCHEMA_VERSION
         source["normalized_log_schema_version"] = LOG_SCHEMA_VERSION
         return source
 

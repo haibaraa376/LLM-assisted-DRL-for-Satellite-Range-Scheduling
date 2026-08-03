@@ -1,0 +1,1838 @@
+Swarm and Evolutionary Computation 83 (2023) 101396
+Available online 9 September 2023
+2210-6502/© 2023 Published by Elsevier B.V.
+Contents lists available at ScienceDirect
+Swarm and Evolutionary Computation journal homepage: www.elsevier.com/locate/swevo
+Space division and adaptive selection strategy based differential evolution algorithm for multi-objective satellite range scheduling problem
+Tianyu Wang, Qizhang Luo ∗, Ling Zhou, Guohua Wu
+School of Traffic and Transportation Engineering, Central South University, Changsha City, 410075, Hunan Province, China
+A R T I C L E
+I N F O
+Keywords:
+Satellite range scheduling problem
+Multi-objective evolutionary algorithm
+Differential evolution
+Space division strategy
+Adaptive strategy
+A B S T R A C T
+Satellite range scheduling always plays a crucial role in tracking, telemetry, and control of the spacecraft. With the significant increase in the number and type of satellites in orbit, the demands of users for satellite range scheduling are becoming more and more diverse. However, existing studies for the satellite range scheduling problem (SRSP) rarely consider multiple optimization objectives, which is quite significant in practice. Hence, this paper investigates a multi-objective satellite range scheduling problem (MO-SRSP) that optimizes three objectives simultaneously: the overall profits of tasks, load-balance of antennas, and completion timeliness of tasks. To address MO-SRSP, this paper establishes a mathematical model on the basis of analysis of MO-SRSP and proposes a multi-objective evolutionary algorithm, which is called multi-objective differential evolution algorithm based on space division and adaptive selection strategy (MODE-SDAS). The space division strategy will uniformly divide the objective space into a set of subspaces and preserve a set of non-dominated solutions in each subspace during the environmental selection even if some of these solutions are dominated by other solutions in other subspaces, so as to maintain the diversity of the algorithm. The adaptive selection strategy will adaptively allocate computational resources to different subspaces to improve the convergence of the population. Besides, problem-specific designs such as coding and encoding methods, the discrete differential evolution operator, as well as objective-specific individual variation operators are incorporated into the algorithm to enhance the search capability. Finally, extensive experiments based on simulation test cases are carried out to verify the effectiveness and efficiency of MODE-SDAS. The comparison results show that MODESDAS significantly outperforms its competitors in terms of three metrics. Meanwhile, knee point analysis, sensitivity analysis, and application insights are presented.
+1. Introduction
+The widely used satellites such as weather forecasting satellites, reconnaissance resource satellites, as well as navigation and communication satellites can provide very convenient services in the fields of national security and social economy [1,2]. These satellites require abundant and frequent communication with ground remote-tracking stations to support their normal operation and applications. The communication process between satellites and ground stations is usually called satellite range, or satellite measurement and control. Hence, a type of scheduling problem called satellite range scheduling problem
+(SRSP) is derived to guarantee successful and efficient communication between satellites and ground stations.
+The aim of SRSP is to reasonably match satellite resources with measurement and control resources, and select appropriate measurement and control tasks to complete [3]. SPSP is similar to the job shop scheduling problem but has numerous additional specific constraints [4]. For example, all communication between satellites and
+∗Corresponding author.
+E-mail address: qz_luo@csu.edu.cn (Q. Luo).
+ground stations must be conducted within visible time windows, which refer to the periods in which satellites and ground station antennas can establish a communication link with each other. Each ground station antenna is required to support only a measurement and control task at a time, and the communication process cannot be interrupted. In addition, a fixed turnaround time is required to execute successive tasks [5]. SRSP has been proven NP-complete [6], which means that it is difficult to find an optimal solution of SRSP in polynomial time. With the increase in the number of satellites, ground stations, and measurement and control tasks in recent years, it is becoming challenging to solve SRSP. Hence, it is significant to investigate SRSP and its solution methods.
+Previously, many studies have been carried out to address SRSP
+[7–9]. In particular, since SRSP usually presents an oversubscribed character due to a large number of measurement and control tasks, most studies aim to minimize the failure rates of tasks under different https://doi.org/10.1016/j.swevo.2023.101396
+Received 30 March 2023; Received in revised form 9 July 2023; Accepted 28 August 2023
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+backgrounds. However, in the engineering practices of SRSP, it is often necessary to consider multiple conflicting optimization objectives. For example, the scheduling center usually needs to maintain the load balance of antenna resources, since a relative load balance could prolong the service life of antenna resources and improve the system’s rapid response capability for emergency events. In addition, the completion timeliness of tasks is also a great concern to users. Within the available time window of a task, the earlier the task is completed, the timelier the corresponding satellite function will be realized, thus the higher user satisfaction can be achieved. Therefore, in this study, we consider a multi-objective satellite range scheduling problem (MO-SRSP), in which the overall profits of tasks, the load balance of antenna resources, and the completion timeliness of tasks are simultaneously optimized.
+In recent years, multi-objective evolutionary algorithms (MOEA) have become a promising method for solving multi-objective optimization problems in engineering practices [10–12]. MOEA can provide a range of solutions that represent the trade-off among objectives, such that the decision-maker can select a reasonable solution according to actual requirements. In this regard, we also develop an MOEA to solve our problem. It should be noted that, although a large number of MOEA have been developed in the literature to address similar problems [13–15], the existing methods usually solve the problem by combining problem-specific designs and cannot be directly applied to solve our problem. First, most multi-objective satellite scheduling methods focus on Earth observation satellite scheduling problems [13,14] that have different requirements and constraints from SRSP. In SRSP, the ground station resources are more scarce and the tasks are more intensive, which further aggravates the conflicts between resources and tasks. Second, although there are few studies that focus on MOSRSP [3,4], most of them consider bi-objective optimization, and the objectives are derived from the task perspective. While in this study we consider three optimization objectives from both task and resource perspectives, which makes our problem more practical and challenging.
+Particularly, the search space would be very large when solving the triobjective optimization problem, such that dedicated mechanisms are essential to strike the balance of diversity and convergence. Therefore, in this study, we incorporate problem-specific designs and reasonable diversity-convergence balance mechanisms into the proposed MOEA to adapt the studied problem as well as improve the performance of the algorithm.
+Thus, main contributions of this study are summarized as follows.
+(i) Aiming at the specific characteristics of SRSP and practical engineering requirements, we establish a multi-objective optimization mathematical model of MO-SRSP. The model simultaneously considers three optimization objectives that are rarely considered in previous studies, including the overall profits of tasks, the resource load-balance of antennas, and the completion timeliness of tasks.
+(ii) Considering the problem knowledge, we propose an MOEA called multi-objective differential evolution algorithm based on space division and adaptive selection strategy (MODE-SDAS). First, we design problem-specific coding and encoding methods to make the discrete difference evolution adapt to the studied problem. Second, we implement a space division strategy and an adaptive selection strategy in the algorithm framework to balance convergence and diversity. Specifically, the space division strategy uniformly divides the objective space into a set of subspaces and preserves non-dominated solutions in each subspace although some solutions are dominated by other solutions in other subspaces during the evolution, to maintain the diversity of the population. The adaptive selection strategy reasonably allocates computational resources to different subspaces, thereby improving the convergence of the population. Finally, three objective-specific individual variation operators are proposed to further enhance the quality of solutions.
+(iii) Extensive simulation experiments are conducted to verify the effectiveness of MODE-SDAS. Comparisons with NSGAII, MOEA/D,
+LGNASGAII, MOEA/D-MA, and D-MOMA-TD are performed to demonstrate the superiority of the proposed MODE-SDAS in terms of three performance metrics and knee points. Further experiments are also carried out to provide sensitivity analysis and insights into the practical implications of the proposed algorithm.
+This paper is organized as follows. In Section 2, a review of related works is presented. The detailed description and mathematical model of MO-SRSP are given in Section 3. Then, Section 4 introduces the proposed MODE-SDAS and Section 5 gives the simulation experiments.
+Finally, Section 6 concludes this study and outlines ideas for future research.
+2. Related works
+This section first reviews single-objective optimization algorithms for SRSP and then gives a brief introduction to MOEAs. Finally, the research on MO-SRSP as well as related discussions are presented.
+Due to the significance of SRSP in ensuring normal operations of satellites, SRSP has received much attention in recent years. A large number of algorithms have been proposed to solve SRSP and these algorithms can be divided into two categories: exact algorithms and heuristic algorithms [16]. The exact algorithms use mathematical programming techniques such as branch and cut [17], precise polynomial time method [18], and dynamic programming [19] to search the optimal solution. Meanwhile, problem decomposition techniques such as column generation [20], Lagrange relaxation [21], and cut plane [22] are used to determine the problem’s tight bounds to reduce the complexity and increase search efficiency. However, since SRSP is a class of complex combinatorial optimization problems, as the problem size grows, the search space expands exponentially, which would lead to unacceptably high computational time for exact algorithms. In contrast to exact algorithms, heuristic and meta-heuristic algorithms can explore the solution space based on problem knowledge and obtain approximate optimal solutions, yielding a more effective search process. Therefore, the majority of the existing studies solve
+SRSP based on meta-heuristic and heuristic algorithms. For example,
+Luo et al. [7] analyzed various conflicts between satellite requests and then developed a conflict-resolution technique that can quickly generate a high-quality solution for SRSP. Marinelli et al. [8] formulated SRSP as a multi-processor task scheduling problem and designed a MIP heuristic Lagrange algorithm to solve the small-scale problem.
+Sarkheyli et al. [23] analyzed the constraints of the communication between LEO satellites and ground stations, and then proposed a tabu search algorithm for small-scale problems. Song et al. [9] proposed an improved genetic algorithm combining a local search for SRSP, in which a reorganization operation and a mutation operation adjusted with the number of iterations were adopted to improve the speed of the search. Chen et al. [24] developed a population perturbation and elimination strategy-based genetic algorithm for a multi-satellite TT&C scheduling problem.
+For large-scale SRSP that appears in recent years, more advanced techniques have been incorporated in canonical meta-heuristic algorithms. For example, Ou et al. [5] proposed a deep reinforcement learning-based method for large-scale SRSP. In their method, deep reinforcement learning was used to determine the process of task assignment and a heuristic was incorporated to quickly solve the single antenna scheduling problem. To provide a set of alternative schedules while maintaining the solution quality, Xiong et al. [25] proposed a co-evolutionary algorithm with an elite archive strategy, where two populations are used to collaboratively solve SRSP. Song et al. [26] proposed a cluster-based genetic algorithm for the SRSP by using the k-means clustering method. They designed a heuristic-based population initialization strategy and a cluster-based evolution strategy. Moreover, Wu et al. [27,28] presented a series of impressive studies that focus on large-scale satellite resource scheduling problems by using divide-and-conquer-based frameworks.
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+The methods developed in the above studies have achieved good performance in solving single-objective SRSP. However, considering the practical requirements of users and the scheduling center, MO-SRSP is also derived in recent years. Hence, the multi-objective optimization method used for solving MO-SRSP is an important direction that should be investigated. Generally, MOEA is a type of promising method for addressing multi-objective optimization problems, which can be broadly classified into the following three categories: Pareto-dominance-based, indicator-based, and decomposition-based [29]. For Pareto-dominancebased MOEAs, they select prominent solutions by dividing the population into a set of non-dominated Pareto fronts and adopting an additional diversity preservation operator in the last front. For example, a classical study by Deb et al. [30] used the crowding degree to sort the solutions in the last front. Chen et al. [31] distinguished prominent solutions closer to the Pareto front by the hyperplane formed by adjacent solution individuals. The indicator-based MOEAs select prominent solutions by establishing a complete order of the solutions according to specific indicators. For example, Zitzler et al. [32] measured the performance of the population by using manually designed evaluation metrics. Sun et al. [33] used IGD metrics to select better solutions in each iteration. The decomposition-based MOEAs usually divide the problem into a set of subproblems and solve the subproblems collaboratively. The most famous study is proposed by Zhang et al. [34], in which the multi-objective optimization problem is decomposed into multiple single-objective subproblems and the subproblems are solved simultaneously using neighborhood information. Chen et al. [35] assigned computational resources to different subproblems by calculating the contribution utility of subspaces to improve the convergence of the population. When solving real-world multi-objective scheduling problems, neighborhood structures and local search strategies that are developed based on problem knowledge are typically combined with one of the above MOEA frameworks. For example, Afsar et al. [36] tackled the fuzzy job shop scheduling problem with double goals by developing a multi-objective enhanced memetic algorithm based on the well-known NSGAII. Wei et al. [14] proposed a multi-objective memetic approach combined with a domination-based framework to solve the bi-objective agile earth observation satellite scheduling problem. Shao et al. [37] solved a multi-objective distributed hybrid flow shop scheduling problem based on a decomposition-based approach and proposed multiple neighborhoods for local search. Due to the differences in neighborhood structures, it is usually difficult to directly implement these methods to solve other real-world problems.
+Previously, only a few MOEAs have been developed for solving
+MO-SRSP. Song et al. [3] studied a MO-SRSP that considers two optimization objectives (i.e., the overall profit of the task sequence and task failure rate in the task sequence) and proposed an MOEA including a learning mechanism, which is called Learning-Guided NSGAII.
+Besides, the authors proposed a heuristic algorithm for the task selection time window. Du et al. [4] considered the request failure rate of satellite-ground communication and the load-balance degree among remote-track antennas are considered objectives and proposed a general MOEA-based memetic algorithm to address the problem. The above studies only consider two objectives while the current satellite measurement and control system requires higher-quality scheduling services that consider more optimization objectives and large-scale requests. Therefore, the current satellite range scheduling needs more complex problem models and calls for more efficient MOEAs.
+In summary, it can be found that the current research on SRSP mainly focuses on single-objective optimization. In addition, research on MO-SRSP is relatively scarce, and the existing research mainly focuses on bi-objective SRSP. In our study, we simultaneously consider three optimization objectives, which makes the problem more challenging than bi-objective optimization problems. Thus, existing methods cannot be directly adopted to solve our problem. We propose an MOEA that combines problem-specific designs and dedicated diversity-convergence balance mechanisms such as objective space division strategy and adaptive selection strategy to address the studied
+MO-SRSP, which also differs our study from previous studies.
+3. Problem description and mathematical model
+This section first presents a formal description of the studied MOSRSP and then gives the mathematical model of the problem.
+3.1. Problem description
+As shown in Fig. 1, a satellite measurement and control system usually includes a set of user satellites in orbit, a set of ground stations that provide measurement and control resources, and a scheduling center.
+During the operation, the users first submit a set of measurement and control tasks to the scheduling center. The scheduling center generates corresponding resource scheduling schemes according to the situations of user satellites, and then deploys the schemes to the ground stations.
+The antennas of the ground stations will execute the measurement and control tasks, and timely upload mission instructions to the satellites. Finally, the satellites will realize their functions according to the mission instructions and transmit feedback to the ground stations.
+In a measurement and control horizon, the satellite will pass over ground stations, during which an antenna of the ground stations can establish a communication link with the satellite. The period when a communication link is established is called a visible time window. Each task is associated with an expected time window submitted by users.
+Hence, each task needs to be executed within the intersection period of a visible time window and its expected time window, which is called the available time window as shown in Fig. 2. When a task occupies an antenna, other tasks cannot be executed on the same antenna at the same time. Furthermore, to establish communication links to satellites, the antenna needs a certain time to adjust its angle and attitude before executing a task.
+In order to simplify the problem, we carry out several reasonable assumptions. First, the scheduling environment is assumed to be static.
+The situations in which emergency tasks and equipment failure appear are ignored. Second, the satellites are assumed to have sufficient energy to establish communication links with ground stations. Meanwhile, assume that the communication link will not be interrupted or occupied when executing a task.
+3.2. Mathematical model
+To facilitate the description of the mathematical model, we first introduce the notations used as follows.
+Denote the set of satellites as Sand the number of satellites as
+|S|. Each satellite si∈Scan be characterized by a tuple {infoi, Tsat i
+}, where i∈{1, ... , |S|}, infoirepresents the information of the satellite
+(e.g., orbit parameters of the satellite), and Tsat i represents the set of measurement and control tasks of the satellite.
+The set of measurement and control tasks submitted by users is defined by Tand the number of tasks is denoted by |T|. Each task ti∈Tcan be characterized by a tuple {si, pi, di, εi, ues i, ule i
+}, where i∈{1, ... , |T|}, sirepresents the satellite to which the task belongs, pi represents the priority of the task (i.e., the profit that can be obtained if the task is successfully executed), direpresents the minimum service duration required to execute the task, εirepresents the preparation time required to execute the task (i.e., the calibration time required to establish a communication link between an antenna and a satellite), ues i and ule irespectively represent the earliest start time and the latest end time expected by users to execute the task. The period between ues i and ule ialso indicates the expected time window of the task.
+The set of antenna resources is represented by Rand the number of antennas is denoted by |R|. Each antenna ri∈Rcan be expressed by a tuple {gi, ci
+}, where i∈{1, ... , |R|}, girepresents the attributes of the antenna (e.g., geographic coordinates of the ground station) and cirepresents the adjustment time required for the antenna to switch between two consecutive tasks.
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 1. Illustration of the satellite measurement and control system.
+Fig. 2. Illustration of the available time window.
+The set of visible time windows between the satellite that requires a task ti∈Tand an antenna rj∈Ris given by Wi,j. Each visible time window wi,j,k∈Wi,jcan be defined by a tuple
+{ qos i,j,k, qoe i,j,k
+}
+, where i∈{1, ... , |T|}, j∈{1, ... , |R|}, k∈{1, ... , |W|}, |W| is the number of visible time windows, qos i,j,kand qoe i,j,krespectively represent the earliest open time and close time of the visible time window. Besides, denote the actual execution start time and end time for executing a task ti∈T as uas i and uae i, respectively.
+Moreover, we define two binary decision variables. Let xi,j,k= 1 if a task ti∈Tis executed by an antenna rj∈Rwithin a visible time window wi,j,k∈Wi,j; 0 otherwise. Meanwhile, suppose yi= 1 if a task ti∈Tis executed; 0 otherwise.
+Based on the above descriptions, the objective functions of MO-SRSP are established as follows: min F(X) = {f1 (X) , f2 (X) , f3 (X)
+} ,
+(1) where, f1 = 1 −
+∑|T| i=1 yi⋅pi
+∑|T| i=1 pi
+,
+(2) f2 =
+⎧
+⎪
+⎨
+⎪⎩
+∑|R| i=1
+[L(ri) −̄L(R)]2
+|R| −1
+⎫
+⎪
+⎬
+⎪⎭
+
+∕̄L(R),
+(3) f3 =
+
+|T|
+|T|
+∑ i=1
+E(ti),
+(4)
+̄L(R) =
+∑|R| j=1 L(rj
+)
+|R|
+,
+(5)
+L(rj
+) =
+|T|
+∑ i=1
+|R|
+∑ j=1
+|W|
+∑ k=1 xi,j,k⋅yi⋅(uae i−uas i),
+(6)
+E(ti
+) =
+⎧
+⎪
+⎨
+⎪⎩ uas i−ues i ule i−ues i
+, if yi= 1
+1, otherwise
+.
+(7)
+Eqs. (2)–(4) represent the optimization objective functions of MOSRSP, where Eq. (2) minimizes the rate of unscheduled task profits,
+Eq. (3) minimizes the unbalance degree of antennas (i.e., the standard deviation of the working time of antennas), and Eq. (4) minimizes the average completion timeliness of tasks (i.e., the deviation degree of the execution time of tasks). Specifically, L(rj
+) is the actual working time of an antenna rjand ̄L(R) is the average working time of all antennas.
+Besides, E(ti
+) is the timeliness of a task ti, which is defined by Eq. (7).
+Furthermore, MO-SRSP is subject to the following constraints:
+|T|
+∑ i=1
+|R|
+∑ j=1
+|W|
+∑ k=1 xi,j,k≤1,
+(8) max(uas i, uas h
+) −min(uae i, uae h
+) ≥0,
+∀i, h∈{1, ... , |Tsat l
+|}, i≠h, ∀l∈{1, ... , |S|},
+(9) uas i
+≥max(ues i, qos i
+) , ∀i∈{1, ... , |T|},
+(10)
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 3. Overall flow of MODE-SDAS.
+uae i
+≤min(ule i, qoe i
+) , ∀i∈{1, ... , |T|},
+(11) uae i−uas i
+≥di, ∀i∈{1, ... , |T|},
+(12) uas h≥εi+ uae i, ∀i, h∈{1, ... , |T|}, i≠h,
+(13) uas h≥cj+ uae i, ∀i, h∈{1, ... , |T|}, i≠h, ∀j∈{1, ... , |R|}.
+(14)
+Eq. (8) indicates that each measurement and control task will be executed at most once. Eq. (9) represents that an antenna only can establish a communication link with at most one satellite when executing a task, and an antenna only can execute a task at a time.
+Eqs. (10)–(11) are actual execution time constraints of tasks. Eq. (10) ensures that the actual start time of a task should not be earlier than the open time of the visible time window and the corresponding expected time window. Eq. (11) indicates that the actual end time of a task should not be later than the close time of the visible time window and the corresponding expected time window. Eq. (12) indicates the minimum duration constraint, which requires that the communication time for executing a task should not be shorter than the minimum service time required. Eqs. (13) and (14) guarantee the preparation time and adjustment time of an antenna when executing two successive tasks.
+4. Solution method
+In order to solve MO-SRSP, we propose a multi-objective differential evolution algorithm based on space division and adaptive selection strategy (MODE-SDAS). The overall flow and key components of
+MODE-SDAS are detailed in this section.
+4.1. Overall flow
+The overall flow of MODE-SDAS is shown in Fig. 3. At the beginning of the algorithm, the objective space is uniformly divided into a set of subspaces (detailed in Section 4.2). The initial population is generated by the Latin hypercube sampling method (detailed in Section 4.5) and each individual in the population is associated with a subspace. The encoding and decoding methods of individuals in the population are detailed in Section 4.4. Afterward, the population is iteratively optimized by a problem-specific differential evolution operator and three types of objective-specific individual variation operators illustrated in Sections 4.6 and 4.7, respectively. Particularly, the differential evolution operator is used to generate offspring, and one of the three individual variation operators will be randomly selected to perform the local search on the offspring. During the optimization, the subspace that has more potential would be adaptively allocated more computational resources to improve the convergence of the population. The potential of each subspace is calculated at the end of each generation, as described in Section 4.3. At the environmental selection stage, each subspace will preserve a set of non-dominated solutions associated with it into the next round of evolution although some of these solutions may be dominated by other solutions in other subspaces, thereby maintaining the diversity of the population. Finally, the algorithm stops when the termination condition is satisfied and outputs a set of approximate
+Pareto optimal solutions formed by the solutions associated with all subspaces.
+4.2. Objective space division strategy
+During the optimization, if the population is relatively heterogeneous and lacks good diversity characteristics, some crucial solutions may be missed, resulting in the algorithm easily falling into the local optimum and failing to converge to a high-quality Pareto front.
+Given that MO-SRSP is a complex engineering problem that has three optimization objectives, its search space would be very large and its solutions would not keep a uniform distribution in the objective space throughout the optimization process, which proposes challenges for avoiding the algorithm falling into the local optimum. In this regard, we adopt an objective space division strategy to help maintain the diversity of the population.
+Specifically, suppose that a set of Nunit weight vectors is uniformly distributed in the objective space, i.e., U= {u1, ... , uN}. Then, each ui can be associated with a subspace Si, which can be defined as
+Si= {v∈Ωf|⟨v, ui⟩≤⟨v, uj⟩, ∀j∈{1, ... , N}},
+(15) where ⟨v, ui⟩is the acute angle between vectors vand ui, Ωfis the mdimensional objective space, and vis the normalized objective vector.
+The geometry interpretation of Eq. (15) is that an objective vector v belongs to a subspace Siif vhas the minimum angle to uiamong N unit weight vectors.
+In addition, suppose the neighborhood size is L, the neighborhood subspaces of subspace Siare the subspaces whose unit weight vectors have the first Lsmallest acute angles to ui, which can be defined as B(i) = {i1, ... , iL}, where ⟨ui, ul⟩< ⟨ui, uj⟩, ∀l∈B(i), ∀j∈
+{1, ... , N}∖B(i). If the angles between the objective vector of an individual and unit weight vectors of multiple subspaces are the same, a subspace will be randomly selected, such that all individuals can be associated with subspaces.
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 4. Illustration of the objective space division strategy and solution preservation strategy.
+The objective space division strategy maintains the diversity of the population by preserving a set of non-dominated solutions in each subspace although these solutions may be dominated by other solutions in other subspaces. Specifically, although an individual has a worse fitness, this individual may produce a new individual that has a better fitness [38]. In other words, the solution dominated by other solutions may guide the search direction to a new non-dominated solution during the evolution. Therefore, preserving some solutions that are dominated by other solutions throughout the evolution process not only helps maintain the diversity of the population but also enables the algorithm to explore more space to avoid local optimum.
+To better illustrate the objective space division strategy as well as the solution preservation strategy, an example is shown in Fig. 4, where a two-dimension objective space is divided into Nsubspaces. In Fig. 4, each subspace is associated with a set of non-dominated solutions represented by blue dots. After the current population completes an evolution, the algorithm generates a set of new solutions represented by red stars and these solutions are associated with subspaces again.
+Then, the non-dominated solutions in each subspace will be preserved during the environmental selection although some of these solutions are dominated by other solutions in other subspaces. For example, the new solutions in subspace S2 are dominated by a new solution in subspace
+S1, but the new solutions in S2 will still be preserved into the next evolution.
+4.3. Adaptive selection strategy
+It is intuitive that the subpopulations in different subspaces have different capabilities to evolve toward the Pareto front. Therefore, the algorithm can select the subspaces that have more potential and allocate these subspaces more computational resources to improve the convergence of the population.
+An indicator called push distance is defined in this study to measure the potential of subspaces. Specifically, suppose that subspace Siand its neighborhood subspaces obtain a new objective vector oiat the kth evolution opportunity, and the new individual is associated with subspace Sj, then the push distance indicator of Sican be calculated by
+θk i= min o∈O‖o−z‖ −‖oi−z‖,
+(16) where Ois the set of objective vectors of the current individuals in subspace Sj, z= (z1, ... , zM
+) is the ideal point, and zi∈zis the minimum value of the objective fiso far. In addition, if the new individual cannot be associated with any subspaces, the push distance would be set to 0.
+Since some subspaces may get multiple evolution opportunities in a generation, the total push distance of a subspace in the Gth generation can be calculated by
+θi,G= n
+∑ k=1
+θk i,
+(17) where nis the number of evolution opportunities obtained by subspace
+Siin the Gth generation.
+The subspaces that can generate better solutions would yield a greater total push distance in the current generation. Meanwhile, since the total push distance of subspaces may be varying along with the evolution, we adopt an adaptive strategy to adjust the evolution opportunity that can be obtained by each subspace. The subspace that has a greater total push distance would have a higher probability of obtaining evolution opportunities in the next generation, thus fully utilizing the potential of each subpopulation to improve the convergence speed. In the G+ 1-th generation, the probability of subspace Siobtaining an evolution opportunity can be expressed as
+ρG+1 i
+=
+∑G g=G−R+1
+(θg i+ σ)
+∑N i=1
+∑G g=G−R+1
+(θg i+ σ) ,
+(18) where Rdenotes the number of remembered generations and Ndenotes the number of subspaces. To remember the history information, we use a matrix Memwhose length is R. The total push distance of each subspace at every generation is recorded by a matrix Memand Mem is updated after each generation in a first-in-last-out manner. To avoid some subspaces cannot obtain any evolution opportunities, a notation
+σis included in the formulation to make the evolution opportunity greater than 0, which can be defined by
+σ= 1
+N
+N
+∑ i=1
+G
+∑ g=G−R+1
+θg i
+(19)
+4.4. Encoding and decoding
+The chromosome needs to reflect the complete information of schedules such as the execution sequence and execution time of tasks, as well as the antennas that execute the tasks. Hence, we design a real number-based coding method as shown in Fig. 5. The length of the chromosome is equal to the number of tasks and each gene position indicates an index of the available time window that will be assigned to the corresponding task. Moreover, the index of an available time window is subject to a range [1, k], where kis the number of candidate available time windows that can be assigned to the corresponding task.
+For example, the chromosome in Fig. 5 indicates that there are 5 tasks to be scheduled. The five tasks respectively have 3, 2, 4, 4, and
+3 candidate available time windows. Meanwhile, as shown in gene positions, these tasks will be assigned to the available time windows whose indexes are 2, 1, 4, 3, and 2, respectively (i.e., tasks t1, t2, t3, t4, and t5 are assigned to available time windows tw2
+1, tw1
+2, tw4
+3, tw3
+4, and tw2
+5, respectively).
+Based on the coding method mentioned above, the algorithm will attempt to find an optimal combination of available time window indexes. Since the available time windows for executing a task are determined by matching every visible time window and the expected time window of the task, while each visible time window is determined by a specific antenna, each available time window can be associated with an execution antenna. Besides, to increase the diversity of the solution, we assume that the actual execution time of each task is randomly selected within the available time window. Therefore, if an available time window for executing a task is confirmed, the corresponding execution antenna and actual execution time of the task also can be obtained.
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 5. Illustration of the chromosome.
+In the decoding stage, the tasks to be scheduled will be selected one by one in descending order of their priority values. Once a task is selected, as mentioned above, the execution antenna and actual execution time of this task can be confirmed based on the available time window at the corresponding gene position. Besides, a feasibility check will be conducted to determine whether accept this task. If the selected task is not in conflict with the tasks in the current scheduling scheme, the selected task will be inserted into the current scheduling scheme. Otherwise, this task will not be scheduled.
+4.5. Population initialization
+The diversity of the initial population has a critical influence on the performance of population-based algorithms such as DE. In order to make the initial population uniformly distributed in the search space and reduce the possibility of the algorithm falling into local optimum, the initial population is generated based on Latin Hypercube
+Design (LHD) [39]. LHD is a sampling-based experimental design for generating a near-random sample of parameter values from a multidimensional distribution. It can spread the sample points more evenly across all possible values. Some existing studies also have adopted LHD to generate the initial population for DE [40,41].
+4.6. Differential evolution operator
+Differential evolution (DE) has a wide range of successful applications in various fields due to its simplicity, ease of implementation, fast convergence, and robustness [41–43]. The success of DE can be attributed to various DE operators that can exchange useful information via different strategies among different individuals during evolutions.
+Hence, we generate new individuals by referring to the idea of DE operators. However, since MO-SRSP is a combinatorial optimization problem while basic DE operators are originally designed for continuous optimization problems, we present a problem-specific discrete differential evolution operator based on the proposed encoding method.
+Specifically, to generate a new individual, an individual Xαwill be randomly selected from a subspace Siand two different individuals
+(i.e., Xβand Xγ) will be randomly selected from the neighborhood subspaces of Si. Then, the gene segment λtof the new individual can be determined according to the following formulas:
+φt= mod
+(( xt
+α+ xt
+β−xt
+γ+ kt)
+, kt)
+,
+(20)
+λt=
+{φt, if φt≠0 kt, otherwise ,
+(21) where xt
+α, xt
+β, and xt
+γare three gene segments of individuals Xα, Xβ, and
+Xγrespectively and these three gene segments are corresponding to the same task t. Besides, ktdenotes the number of candidate available time windows on all antennas for the task tand mod(⋅) denotes the modulus operator whose result is the remainder when the first operand is divided by the second.
+The underlying meaning of Eq. (20) is that the new individual is obtained by adding the difference between two individuals (i.e., Xβand
+Xγ) to the individual Xα, such that the new individual can inherit useful information from the three selected individuals. Moreover, Eq. (21) ensures that each task will get an available time window by enforcing
+λtequals ktwhen the modulus operator gets a zero.
+4.7. Individual variation operators
+In order to further enhance the search capability of the algorithm, we design three types of objective-specific individual variation operators, including the task conflict resolution operator, resource load balancing operator, and task timeliness improvement operator. The above three types of variation operators are randomly triggered after obtaining a new individual by the DE operator.
+4.7.1. Task conflict resolution operator
+The task conflict resolution operator aims to maximize the overall profits of tasks. As shown in Fig. 6, this operator first sorts the unscheduled tasks according to their priority values in descending order.
+Then, the operator will attempt to insert each unscheduled task into the current scheduling scheme one by one if the task is not in conflict with the scheduled tasks.
+Algorithm 1 Task conflict resolution operator
+1: Sort unscheduled tasks Tuaccording to priority values
+2: for each t∈Tudo
+3:
+Find all feasible antennas R
+4:
+Assign an antenna r∈Rto tbased on a strategy in {S1, S2, S3}
+5:
+Find all available time windows TWron r
+6:
+Assign an available time window tw∈TWrto tbased on a strategy in {S4, S5, S6}
+7: if tcan be scheduled then
+8:
+Insert tinto current scheduling scheme P
+9: end if
+10: end for
+11: return Updated scheduling scheme P
+The pseudo-code of the task conflict resolution operator is summarized in Algorithm 1. For each unscheduled task t, the operator will first find the set of all feasible antennas denoted by R, and then assign an antenna r∈Rto the task t(lines 3–4). A feasible antenna means that this antenna can provide available time windows for the task. We present three problem-specific strategies (i.e., S1, S2, and S3) that are
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 6. Illustration of the task conflict resolution operator.
+random-based, roulette wheel-based, and greedy-based for selecting an antenna. The operator will randomly implement a strategy each time the selection is conducted.
+Wherein, S1 will randomly select an antenna from all feasible antennas for the task. S2 will select an antenna from all feasible antennas for the task based on the roulette wheel method. The selection probability of an antenna ris determined according to the load of antennas, i.e., pror=
+1∕L(r)
+∑ r∈R1∕L(r),
+(22) where L(r) is the total working time of tasks allocated to r. The underlying meaning of this formula is that the shorter the antenna’s working time, the higher the probability of being selected. This strategy not only reduces the number of tasks unscheduled but also considers the load balance of antennas. Furthermore, S3 will greedily select an antenna rthat has the smallest value of L(r) from all feasible antennas.
+Afterward, the operator will find all available time windows TWr on antenna rand select an available time window tw∈TWrfor task t
+(lines 5–6). We also present three problem-specific strategies (i.e., S4,
+S5, and S6) that respectively use random-based, roulette wheel-based and greedy-based principles for selecting an available time window.
+Different from the above three strategies for selecting an antenna, the available time window that has a low conflict degree is preferred in S5 and S6.
+The conflict degree reflects the probability that a task conflicts with other tasks in its available time window. Since an antenna only can execute a task at a time while the available time windows on the same antenna for multiple tasks may be overlapped with each other, possible conflicts exist among the tasks allocated to the same antenna. The conflicts would lead to failures in allocating more tasks on the same antenna. Hence, when selecting an available time window, preference should be given to the available time window in which the task has a low probability of being in conflict with other tasks. Intuitively, the conflict degree can be quantified by the overlapped periods among available time windows. The reader may find a detailed description for quantifying the conflict degree in [44].
+4.7.2. Resource load balancing operator
+As shown in Fig. 7, the resource load balancing operator includes two stages. The first stage attempts to insert the unscheduled tasks into the current scheduling scheme and the second stage relocates the scheduled tasks on different antennas to balance the working time of antennas.
+The pseudo-code of the task conflict resolution operator is presented in Algorithm 2. The first stage is similar to the task conflict resolution operator, which first sorts the unscheduled tasks according to their priority values and then assigns antennas and available time windows to these tasks (lines 1). When assigning antennas, the operator uses the same strategies as the task conflict resolution operator (i.e., S1, S2, and S3). For the selection of available time windows, a random-based strategy (i.e., S4) and two roulette wheel-based strategies (i.e., S5 and S7) are implemented. In S7, the available time window that has a smaller timeliness value would have a high probability to be selected. The timeliness value of an available time window is the total timeliness value of tasks allocated to this available time window and the timeliness value of a task is calculated by Eq. (7).
+Algorithm 2 Resource load balancing operator
+1: Inset unscheduled tasks into the scheduling scheme P as in
+Algorithm 1
+2: Calculate Nadby formula (23)
+3: for i= 1 to Naddo
+4:
+Find the antenna rh∈Rthat has the highest load
+5:
+Find the antenna rl∈Rthat has the lowest load
+6:
+Find the set of tasks Thsthat have available time windows on rlfrom the tasks allocated to rh
+7:
+Select a task t∈Thsbased on a strategy in {S8, S9, S10}
+8:
+Assign an available time window to tbased on a strategy in
+{S4, S5, S7}
+9: if tcan be allocated to rlthen
+10:
+Update the current scheduling scheme P
+11: end if
+12: end for
+13: return Updated scheduling scheme P
+In the second stage, the tasks on the antenna that has the highest load will be moved to the antenna that has the lowest load. The number of tasks that will be relocated is determined by
+Nad= round
+( oveTime aveTime
+)
+,
+(23) where round(⋅) rounds the element in it to the nearest integer, oveTime denotes the total working time of the antennas whose working time is longer than the average working time of all antennas, and aveTime represents the average execution time of the scheduled tasks. The values of oveTimeand aveTimeare calculated by oveTime=
+∑ r∈{R|L(r)≥̄L(R)}
+(L(r) −̄L(R)),
+(24) aveTime=
+
+|Ts| ⋅
+∑ ti∈Ts
+(uae i−uas i
+),
+(25) where Tsis the set of scheduled tasks and |Ts| is the number of scheduled tasks.
+After obtaining the number Nad, the operator will find the antenna rhthat has the highest load and the antenna rlthat has the lowest load from the antenna set R(lines 4–5). Then, the tasks that have available time windows on rlwill be selected from the tasks allocated to rh, and the set of selected tasks is denoted by Ths(line 6). To further select a task to be relocated to rlfrom Ths, we adopt three strategies that use random-based, roulette wheel-based, and greedy-based principles
+(i.e., S8, S9, S10), respectively. Particularly, the tasks that have more available time windows on rlwould be preferred in S9 and S10.
+Once a task is selected, an available time window twprovided by the antenna rlwill be assigned to this task based on a strategy randomly selected from S4, S5, and S7 (line 8). If the selected task thas no conflicts with other tasks already on the antenna rl, the scheduling scheme will be updated by relocating task tto the assigned available time window tw(lines 9–11).
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 7. Illustration of the resource load balancing operator.
+Fig. 8. Illustration of the task timeliness improvement operator.
+4.7.3. Task timeliness improvement operator
+As illustrated in Fig. 8, the task timeliness improvement operator consists of two stages. The first stage attempts to relocate the scheduled tasks on the same antenna and the second stage aims to insert more unscheduled tasks into the current scheduling scheme.
+Algorithm 3 Task timeliness improvement operator
+1: for each task t∈Tsdo
+2:
+Find the set of available time windows TWon the current antenna
+3: if TW≠∅then
+4:
+Assign an available time window tw∈TWto tbased on a strategy in {S4, S7, S11}
+5: if tcan be scheduled in twthen
+6:
+Update the scheduling scheme P
+7: end if
+8: end if
+9: end for
+10: Inset unscheduled tasks into the scheduling scheme P as in
+Algorithm 1
+11: return Updated scheduling scheme P
+The process of the task timeliness improvement operator is shown in Algorithm 3. In the first stage (lines 1–9), the operator will first find a set of available time windows for each scheduled task t∈Tson the antenna to which it is allocated. If there exist any other available time windows on the current antenna, the operator will assign an available time window tw∈TWto tbased on a strategy randomly selected from S4, S7, and S11, where S11 will greedily select the available time window that has the earliest start time from all candidate available time windows on the same antenna. Once an available time window twis selected, the scheduling scheme will be updated by relocating tto tw if no conflicts exist between tand other tasks scheduled. This stage not only improves the timeliness performance of the scheduling scheme but also has no effects on the current load of antennas.
+In the second stage (line 10), the unscheduled tasks will be sorted and attempted to be inserted into the scheduling scheme one by one according to the descending order of priority values, as in the task conflict resolution operator. It should be noted that the strategies are different when selecting available time windows. Specifically, the operator will randomly select a strategy from S4, S7, and S12 for selecting an available time window, where S12 will greedily select the available time window that has the smallest timeliness value.
+5. Simulation experiments
+To evaluate the proposed algorithm, extensive experiments on a set of simulation cases with different scales are carried out. All experiments are conducted on a computer with Inter(R) Core (TM) i5-10400 CPU @
+2.90 GHz and 16.0 GB RAM, by using MATLAB R2018b on Windows
+10 operating system.
+5.1. Experiment setup
+5.1.1. Test cases
+Since there are no standard test cases for MO-SRSP and it is difficult to obtain real-world satellite range scheduling data, we use simulation software to generate reliable test data. Specifically, the time of scheduling horizon is set from October 1, 2022, 00:00:00–October 2,
+2022, 00:00:00. Assume that all satellites are operated by Chinese management agencies, and all antenna resources are located in China.
+We use the simulation software to calculate all visible time windows between satellites and ground stations, and then process the obtained data to generate available time windows between all tasks and antennas. Additionally, the priority piof each task is randomly generated within the interval [1, 10]. The expected start time ues i and expected
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Table 1
+Geographic information of ground stations.
+City
+Station
+Longitude
+Latitude
+Jiamusi
+R1
+130◦E
+46◦N
+Kashi
+R2
+75◦E
+39◦N
+Lhasa
+R3
+91◦E
+29◦N
+Qingdao
+R4
+120◦E
+36◦N
+Sanya
+R5
+108◦E
+18◦N
+Urumqi
+R6
+87◦E
+43◦N
+Xiamen
+R7
+118◦E
+24◦N
+Hohhot
+R8
+111◦E
+40◦N
+Taiyuan
+R9
+112◦E
+38◦N
+Weinan
+R10
+109◦E
+34◦N
+Xi’an
+R11
+107◦E
+34◦N
+Table 2
+Summary of test cases.
+Test cases
+Task
+Sat
+Station
+Distribution
+Case1
+
+R1∼R7 scattered
+Case2
+
+R1∼R7 scattered
+Case3
+
+R1∼R7 scattered
+Case4
+
+R1∼R7 scattered
+Case5
+
+R1∼R7 scattered
+Case6
+
+R1∼R7 scattered
+Case7
+
+R1∼R7 scattered
+Case8
+
+R1∼R7 scattered
+Case9
+
+R1∼R7 scattered
+Case10
+
+R1∼R7 scattered
+Case11
+
+R1∼R7 scattered
+Case12
+
+R1∼R7 scattered
+Case13
+
+R8∼R11 concentrated
+Case14
+
+R8∼R11 concentrated
+Case15
+
+R8∼R11 concentrated
+Case16
+
+R8∼R11 concentrated
+Case17
+
+R8∼R11 concentrated
+Case18
+
+R8∼R11 concentrated
+Case19
+
+R8∼R11 concentrated
+Case20
+
+R8∼R11 concentrated
+Case21
+
+R8∼R11 concentrated
+Case22
+
+R8∼R11 concentrated
+Case23
+
+R8∼R11 concentrated
+Case24
+
+R8∼R11 concentrated end time ule iof each task are randomly determined within [0h, 10h] and
+[14h, 24h], respectively.
+In order to verify the applicability of the algorithm in different experimental situations, we build two sets of scenarios with different distribution types of ground stations. The distribution of ground stations in the first set of scenarios is relatively scattered while the distribution of ground stations in the second set of scenarios is more concentrated. Besides, given that if the number of ground stations is too small, the strong constraints would make the algorithms find few feasible solutions. On the other hand, if the ground station is sufficient, all tasks would be scheduled easily, such that the superiority of the proposed algorithm cannot be verified. Therefore, we choose a moderate number of ground stations based on experience. Specifically, assume that the first set of scenarios involves 7 ground stations located in Jiamusi, Kashi, Lhasa, Qingdao, Sanya, Urumqi, and Xiamen Cities, respectively. The second set of scenarios includes 4 ground stations located in Hohhot, Taiyuan, Weinan, and Xi’an Cities, respectively.
+The geographic information of the ground stations is summarized in
+Table 1. Further, in each set of scenarios, 12 test cases are generated by varying the numbers of satellites and tasks. Finally, a total of 24 test cases are obtained. All test cases are summarized in Table 2, where
+Taskdenotes the number of tasks, Satdenotes the number of satellites,
+Stationindicates the used ground stations, and Distributiondenotes the distribution type of ground stations.
+5.1.2. Comparison algorithms
+In order to verify the effectiveness of the proposed algorithm, five MOEAs are selected as comparison algorithms, including NSGAII [30], MOEA/D [34], LGNSGAII [3], MOEA/D-MA [4], and DMOMA-TD [14]. NSGAII and MOEA/D are two classical MOEAs that use Pareto-dominance-based and decomposition-based environmental selection strategies, respectively. LGNSGAII and MOEA/D-MA are two state-of-the-art MOEAs for MO-SRSP. Particularly, LGNSGAII improves
+NSGAII by introducing a learning mechanism to guide the optimization process. MOEA/D-MA is a memetic algorithm that enhances the algorithm’s performance by embedding a local neighborhood search.
+Further, D-MOMA-TD is a state-of-the-art multi-objective memetic algorithm for earth observation satellite scheduling problems, and we adapt it to address our problem.
+5.1.3. Evaluation metrics
+We choose three widely used metrics to measure the performance of algorithms. The first metric is the inverted generational distance
+(IGD) [45], which calculates the average distance from each point on the ideal Pareto front to its closest solution on the approximate Pareto front obtained by an algorithm. A smaller IGD value suggests good convergence and distribution of solutions. The second metric Δpis the averaged Hausdorff distance between the outcome Pareto front and the ideal Pareto front of the problem [46]. The metric Δpis composed of the slight modified generational distance (GD) and IGD. If the value of Δpis smaller, it means that the performance of the algorithm is better. The third metric is Hypervolume (HV) [47], which refers to the hypervolume of the objective space formed by the ideal point and the output solutions. A larger value of HV indicates better convergence and diversity of the solutions. It should be noted that since the ideal
+Pareto front of each test case is unknown, we run all algorithms on each test case 15 times independently with the maximum generation number G= 500, and then form an ideal Pareto front for each test case by collecting all non-dominated solutions obtained by all algorithm.
+5.1.4. Algorithm settings
+Based on the engineering experience and related Ref. [4,14], the population size of all algorithms is set to N
+=
+100. Due to the differences in optimization mechanisms of different algorithms, the termination conditions of all algorithms are determined by the number of constraint judgments when decoding individuals to ensure the fairness of comparisons. Thus, the maximum number of constraint judgments is defined by MaxFES= N∗n∗G, where nrepresents the task scale.
+According to preliminary experiments, we set G= 200, the number of memory generations R= 5, and the neighborhood size L= 10. The reader may find the analysis experiments of convergence in Section 5.2, and the sensitivity experiments of Rand Lin Section 5.4. For the parameters of the five competitors, we follow the recommendation settings reported in the original literature.
+5.2. Comparison results
+To ensure the reliability of the experimental results, all algorithms are repeated 30 times independently on each test case. The comparison results of six algorithms based on three metrics (i.e., IGD, Δp, and HV) are reported in Tables 3–5, respectively. The results include average values and standard deviations of the three metrics, which are represented by Avg. and Std. in the tables, respectively. The best average values are marked in bold. Besides, Wilcoxon’s rank-sum test with p= 0.05 is implemented to verify the significant differences between the metric results of MODE-SDAS and these of the comparison algorithms.
+The symbols +, -, ≈represent that the metric result of a competitor is significantly better than, worse than, and similar to MODE-SDAS, respectively.
+As illustrated in Table 3, the proposed MODE-SDAS significantly outperforms the other 5 competitors in terms of IGD. In particular,
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Table 3
+Comparison results of IGD values of the six algorithms.
+Cases
+NSGAII
+MOEA/D
+LGNSGAII
+MOEA/D-MA
+D-MOMA-TD
+MODE-SDAS
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Case1
+0.1666
+0.0114
+0.1614
+0.0147
+0.1678
+0.0107
+0.0424
+0.0102
+0.0913
+0.0120
+0.0377
+0.0102
+Case2
+0.1750
+0.0092
+0.1760
+0.0095
+0.2364
+0.0114
+0.0371
+0.0051
+0.1011
+0.0141
+0.0470
+0.0127
+Case3
+0.1998
+0.0063
+0.1997
+0.0076
+0.2388
+0.0070
+0.0312
+0.0090
+0.0964
+0.0125
+0.0463
+0.0090
+Case4
+0.2421
+0.0049
+0.2449
+0.0067
+0.2165
+0.0108
+0.0714
+0.0144
+0.1294
+0.0128
+0.0475
+0.0119
+Case5
+0.2808
+0.0034
+0.2828
+0.0068
+0.2123
+0.0086
+0.1098
+0.0140
+0.1694
+0.0148
+0.0609
+0.0191
+Case6
+0.3635
+0.0055
+0.3653
+0.0041
+0.2480
+0.0045
+0.2005
+0.0098
+0.2548
+0.0142
+0.1260
+0.0222
+Case7
+0.4174
+0.0042
+0.4184
+0.0052
+0.2925
+0.0036
+0.2629
+0.0133
+0.3105
+0.0108
+0.1969
+0.0151
+Case8
+0.3501
+0.0040
+0.3465
+0.0070
+0.2576
+0.0068
+0.1696
+0.0172
+0.2269
+0.0163
+0.1137
+0.0283
+Case9
+0.4376
+0.0038
+0.4373
+0.0048
+0.3269
+0.0033
+0.2753
+0.0144
+0.3212
+0.0114
+0.1993
+0.0273
+Case10
+0.5009
+0.0040
+0.5014
+0.0042
+0.3833
+0.0041
+0.3505
+0.0110
+0.3899
+0.0128
+0.2836
+0.0151
+Case11
+0.5710
+0.0027
+0.5718
+0.0031
+0.4604
+0.0036
+0.4323
+0.0092
+0.4666
+0.0105
+0.3677
+0.0101
+Case12
+0.6119
+0.0034
+0.6104
+0.0029
+0.5101
+0.0022
+0.4778
+0.0074
+0.5118
+0.0070
+0.4162
+0.0124
+Case13
+0.1516
+0.0103
+0.1488
+0.0121
+0.0907
+0.0119
+0.0318
+0.0086
+0.0639
+0.0115
+0.0261
+0.0078
+Case14
+0.2246
+0.0085
+0.2203
+0.0088
+0.1257
+0.0096
+0.0462
+0.0138
+0.1094
+0.0168
+0.0418
+0.0078
+Case15
+0.3072
+0.0073
+0.3058
+0.0107
+0.1902
+0.0062
+0.1186
+0.0166
+0.1769
+0.0178
+0.0941
+0.0176
+Case16
+0.3720
+0.0053
+0.3689
+0.0068
+0.2510
+0.0045
+0.1846
+0.0144
+0.2314
+0.0152
+0.1417
+0.0172
+Case17
+0.4189
+0.0044
+0.4193
+0.0075
+0.2827
+0.0045
+0.2458
+0.0160
+0.2903
+0.0175
+0.2063
+0.0147
+Case18
+0.5079
+0.0046
+0.5051
+0.0056
+0.3927
+0.0038
+0.3383
+0.0113
+0.3811
+0.0128
+0.2974
+0.0140
+Case19
+0.5835
+0.0040
+0.5811
+0.0039
+0.4885
+0.0032
+0.4295
+0.0090
+0.4732
+0.0120
+0.3929
+0.0075
+Case20
+0.5080
+0.0050
+0.5070
+0.0063
+0.3921
+0.0062
+0.3331
+0.0148
+0.3799
+0.0160
+0.2947
+0.0159
+Case21
+0.5989
+0.0052
+0.5969
+0.0038
+0.5074
+0.0043
+0.4467
+0.0135
+0.4934
+0.0144
+0.4148
+0.0057
+Case22
+0.6715
+0.0036
+0.6709
+0.0050
+0.5924
+0.0047
+0.5301
+0.0091
+0.5620
+0.0086
+0.4959
+0.0071
+Case23
+0.7244
+0.0029
+0.7235
+0.0028
+0.6576
+0.0036
+0.5976
+0.0064
+0.6299
+0.0084
+0.5692
+0.0030
+Case24
+0.7640
+0.0029
+0.7638
+0.0028
+0.7109
+0.0028
+0.6444
+0.0073
+0.6735
+0.0068
+0.6212
+0.0037
++ /-/≈
+0/24/0
+0/24/0
+0/24/0
+2/22/0
+0/24/0
+Table 4
+Comparison results of Δpvalues of the six algorithms.
+Cases
+NSGAII
+MOEA/D
+LGNSGAII
+MOEA/D-MA
+D-MOMA-TD
+MODE-SDAS
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Case1
+0.2084
+0.0077
+0.2071
+0.0125
+0.1863
+0.0108
+0.0908
+0.0139
+0.1021
+0.0118
+0.0425
+0.0100
+Case2
+0.2429
+0.0077
+0.2477
+0.0092
+0.2811
+0.0132
+0.1235
+0.0171
+0.1361
+0.0126
+0.0555
+0.0150
+Case3
+0.2795
+0.0067
+0.2826
+0.0074
+0.2513
+0.0078
+0.1560
+0.0107
+0.1658
+0.0113
+0.0630
+0.0144
+Case4
+0.3257
+0.0068
+0.3275
+0.0090
+0.2499
+0.0077
+0.2012
+0.0142
+0.2135
+0.0156
+0.0933
+0.0231
+Case5
+0.3620
+0.0074
+0.3693
+0.0079
+0.2724
+0.0051
+0.2358
+0.0138
+0.2555
+0.0155
+0.1343
+0.0220
+Case6
+0.4460
+0.0050
+0.4499
+0.0070
+0.3327
+0.0060
+0.3239
+0.0086
+0.3504
+0.0119
+0.2222
+0.0209
+Case7
+0.5028
+0.0037
+0.5035
+0.0044
+0.3818
+0.0061
+0.3820
+0.0130
+0.4059
+0.0090
+0.2922
+0.0133
+Case8
+0.4262
+0.0078
+0.4310
+0.0066
+0.3227
+0.0058
+0.2914
+0.0162
+0.3171
+0.0118
+0.1999
+0.0246
+Case9
+0.5183
+0.0046
+0.5249
+0.0047
+0.4071
+0.0052
+0.3910
+0.0128
+0.4115
+0.0092
+0.2923
+0.0216
+Case10
+0.5849
+0.0047
+0.5882
+0.0056
+0.4710
+0.0042
+0.4644
+0.0101
+0.4829
+0.0100
+0.3729
+0.0144
+Case11
+0.6560
+0.0044
+0.6577
+0.0038
+0.5505
+0.0047
+0.5430
+0.0086
+0.5609
+0.0093
+0.4583
+0.0111
+Case12
+0.6952
+0.0046
+0.6983
+0.0037
+0.6005
+0.0037
+0.5879
+0.0071
+0.6067
+0.0077
+0.5103
+0.0114
+Case13
+0.1974
+0.0088
+0.2008
+0.0115
+0.1215
+0.0061
+0.0801
+0.0132
+0.0817
+0.0120
+0.0316
+0.0093
+Case14
+0.2689
+0.0089
+0.2745
+0.0074
+0.1656
+0.0072
+0.1336
+0.0128
+0.1545
+0.0138
+0.0731
+0.0156
+Case15
+0.3602
+0.0080
+0.3672
+0.0091
+0.2505
+0.0064
+0.2149
+0.0142
+0.2383
+0.0147
+0.1621
+0.0172
+Case16
+0.4260
+0.0070
+0.4289
+0.0070
+0.3150
+0.0055
+0.2770
+0.0143
+0.2937
+0.0121
+0.2055
+0.0175
+Case17
+0.4730
+0.0063
+0.4752
+0.0077
+0.3453
+0.0077
+0.3355
+0.0146
+0.3518
+0.0147
+0.2681
+0.0147
+Case18
+0.5852
+0.0057
+0.5868
+0.0074
+0.4797
+0.0049
+0.4523
+0.0092
+0.4725
+0.0124
+0.3901
+0.0118
+Case19
+0.6637
+0.0056
+0.6673
+0.0051
+0.5760
+0.0048
+0.5403
+0.0088
+0.5658
+0.0102
+0.4880
+0.0079
+Case20
+0.5612
+0.0058
+0.5647
+0.0066
+0.4531
+0.0053
+0.4203
+0.0140
+0.4394
+0.0151
+0.3596
+0.0139
+Case21
+0.6557
+0.0051
+0.6588
+0.0048
+0.5716
+0.0046
+0.5319
+0.0117
+0.5586
+0.0149
+0.4786
+0.0053
+Case22
+0.7316
+0.0040
+0.7337
+0.0055
+0.6561
+0.0043
+0.6141
+0.0083
+0.6296
+0.0072
+0.5631
+0.0074
+Case23
+0.7870
+0.0038
+0.7884
+0.0032
+0.7257
+0.0039
+0.6800
+0.0059
+0.6989
+0.0068
+0.6385
+0.0035
+Case24
+0.8301
+0.0026
+0.8318
+0.0036
+0.7777
+0.0036
+0.7278
+0.0073
+0.7440
+0.0057
+0.6936
+0.0031
++ /-/≈
+0/24/0
+0/24/0
+0/24/0
+0/24/0
+0/24/0 the proposed MODE-SDAS obtains significantly smaller IGD values compared with NSGAII, MOEA/D, LGNSGAII, and D-MOMA-TD on all test cases. Compared with MODE-SDAS, only MOEA/D-MA shows a few competitive performances by obtaining significantly smaller IGD values on 2 out of 24 test cases. Besides, MOEA/D-MA obtains the best average
+IGD values on test cases 2 and 3.
+In Tables 4–5, we observe that the proposed MODE-SDAS exhibits promising performance and prevails over NSGAII, MOEA/D, LGNSGAII,
+MOEA/D-MA, and D-MOMA-TD on all test cases in terms of Δpand HV.
+The above results are in line with the results in Table 3 and further demonstrate the superiority of MODE-SDAS.
+The reasons can be explained as follows. First, for a tri-objective optimization problem that will generate more non-dominated solutions compared with bi-objective optimization problems, the Paretodominance-based algorithms (e.g., NSGAII, LGNSGAII, and D-MOMATD) that usually emphasize non-dominated solutions in a population will have insufficient room for creating new solutions in a generation and cause an unacceptable distribution of the solutions, resulting in inefficient of these algorithms [48]. On the contrary, MOEA/D, MOEA/DMA, and MODE-SDAS emphasize the distribution of solutions based on decomposition-based mechanics, such that these algorithms obtain
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Table 5
+Comparison results of HV values of the six algorithms.
+Cases
+NSGAII
+MOEA/D
+LGNSGAII
+MOEA/D-MA
+D-MOMA-TD
+MODE-SDAS
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Avg.
+Std.
+Case1
+0.5172
+0.0084
+0.4992
+0.0084
+0.5489
+0.0082
+0.6221
+0.0164
+0.6299
+0.0120
+0.7098
+0.0174
+Case2
+0.4647
+0.0061
+0.4502
+0.0078
+0.4987
+0.0101
+0.5819
+0.0193
+0.5801
+0.0122
+0.6828
+0.0224
+Case3
+0.4237
+0.0067
+0.4122
+0.0076
+0.4758
+0.0080
+0.5395
+0.0112
+0.5403
+0.0117
+0.6639
+0.0180
+Case4
+0.3732
+0.0055
+0.3652
+0.0065
+0.4584
+0.0063
+0.4840
+0.0150
+0.4782
+0.0133
+0.6248
+0.0260
+Case5
+0.3385
+0.0042
+0.3284
+0.0044
+0.4241
+0.0056
+0.4442
+0.0142
+0.4326
+0.0153
+0.5721
+0.0239
+Case6
+0.2678
+0.0021
+0.2629
+0.0036
+0.3576
+0.0039
+0.3573
+0.0084
+0.3414
+0.0110
+0.4746
+0.0178
+Case7
+0.2298
+0.0021
+0.2252
+0.0027
+0.3122
+0.0040
+0.3063
+0.0107
+0.2919
+0.0070
+0.4011
+0.0109
+Case8
+0.2829
+0.0041
+0.2753
+0.0036
+0.3709
+0.0050
+0.3875
+0.0158
+0.3726
+0.0108
+0.4984
+0.0246
+Case9
+0.2196
+0.0025
+0.2143
+0.0029
+0.2917
+0.0051
+0.2998
+0.0107
+0.2887
+0.0072
+0.3993
+0.0183
+Case10
+0.1786
+0.0024
+0.1747
+0.0030
+0.2428
+0.0041
+0.2431
+0.0071
+0.2359
+0.0068
+0.3224
+0.0111
+Case11
+0.1405
+0.0015
+0.1377
+0.0013
+0.1932
+0.0019
+0.1918
+0.0056
+0.1842
+0.0056
+0.2531
+0.0066
+Case12
+0.1202
+0.0014
+0.1176
+0.0016
+0.1648
+0.0021
+0.1645
+0.0040
+0.1567
+0.0040
+0.2158
+0.0058
+Case13
+0.4946
+0.0053
+0.4806
+0.0085
+0.5823
+0.0038
+0.6054
+0.0163
+0.6170
+0.0149
+0.6811
+0.0139
+Case14
+0.4047
+0.0041
+0.3948
+0.0062
+0.5182
+0.0048
+0.5262
+0.0144
+0.5169
+0.0142
+0.6131
+0.0175
+Case15
+0.3203
+0.0040
+0.3110
+0.0049
+0.4256
+0.0044
+0.4390
+0.0146
+0.4235
+0.0146
+0.5098
+0.0145
+Case16
+0.2672
+0.0039
+0.2613
+0.0048
+0.3599
+0.0052
+0.3760
+0.0137
+0.3694
+0.0108
+0.4584
+0.0144
+Case17
+0.2374
+0.0035
+0.2322
+0.0044
+0.3321
+0.0049
+0.3245
+0.0126
+0.3189
+0.0115
+0.3930
+0.0122
+Case18
+0.1790
+0.0026
+0.1760
+0.0039
+0.2453
+0.0028
+0.2520
+0.0067
+0.2432
+0.0073
+0.3075
+0.0081
+Case19
+0.1374
+0.0020
+0.1339
+0.0018
+0.1839
+0.0019
+0.1928
+0.0059
+0.1828
+0.0062
+0.2315
+0.0049
+Case20
+0.1852
+0.0025
+0.1804
+0.0026
+0.2550
+0.0037
+0.2630
+0.0105
+0.2565
+0.0100
+0.3162
+0.0107
+Case21
+0.1298
+0.0018
+0.1275
+0.0020
+0.1739
+0.0022
+0.1832
+0.0068
+0.1734
+0.0072
+0.2197
+0.0032
+Case22
+0.0967
+0.0012
+0.0949
+0.0011
+0.1299
+0.0017
+0.1378
+0.0041
+0.1341
+0.0032
+0.1676
+0.0036
+Case23
+0.0754
+0.0008
+0.0740
+0.0013
+0.0993
+0.0014
+0.1082
+0.0027
+0.1029
+0.0029
+0.1290
+0.0014
+Case24
+0.0599
+0.0007
+0.0587
+0.0008
+0.0773
+0.0011
+0.0863
+0.0030
+0.0822
+0.0020
+0.1014
+0.0013
++ /-/≈
+0/24/0
+0/24/0
+0/24/0
+0/24/0
+0/24/0
+Table 6
+Average running time (seconds) of each algorithm on all test cases.
+Cases
+NSGAII
+MOEA/D
+LGNSGAII
+MOEA/D-MA
+D-MOMA-TD
+MODE-SDAS
+Case1
+19.24
+15.98
+33.01
+111.46
+251.01
+81.62
+Case2
+26.09
+23.54
+53.12
+188.63
+385.30
+128.46
+Case3
+34.28
+33.95
+70.69
+216.53
+527.53
+178.49
+Case4
+41.36
+42.57
+92.67
+253.76
+690.20
+233.99
+Case5
+49.63
+52.33
+108.12
+290.15
+872.90
+294.96
+Case6
+67.06
+72.16
+154.89
+389.25
+1242.21
+427.75
+Case7
+86.25
+94.62
+201.89
+502.16
+1322.89
+562.88
+Case8
+48.79
+45.21
+122.32
+280.53
+898.43
+307.87
+Case9
+75.33
+71.66
+196.80
+455.39
+1395.38
+503.75
+Case10
+103.54
+100.73
+277.92
+621.38
+1856.12
+715.30
+Case11
+134.89
+131.01
+331.28
+810.08
+2281.23
+947.72
+Case12
+168.97
+165.79
+414.32
+1114.35
+2623.32
+1183.73
+Case13
+18.86
+16.24
+34.31
+143.56
+268.04
+86.75
+Case14
+24.85
+22.34
+52.02
+159.72
+423.41
+137.37
+Case15
+31.78
+29.57
+71.75
+149.34
+593.93
+192.55
+Case16
+42.06
+40.93
+93.65
+200.54
+755.24
+249.29
+Case17
+49.27
+47.46
+115.61
+263.02
+975.92
+317.35
+Case18
+67.05
+65.85
+161.91
+395.16
+1372.06
+450.03
+Case19
+85.92
+86.03
+210.56
+583.24
+1420.09
+594.53
+Case20
+45.87
+44.01
+118.91
+284.51
+1012.09
+324.87
+Case21
+71.07
+69.66
+188.36
+489.69
+1524.42
+526.07
+Case22
+106.00
+105.04
+260.09
+715.68
+1991.64
+739.62
+Case23
+132.06
+133.04
+338.05
+1014.88
+2379.33
+969.04
+Case24
+163.78
+164.00
+415.33
+1391.69
+2715.26
+1199.71 better results on most test cases. Second, MOEA/D-MA and MODESDAS exhibit better performance compared with NSGAII and MOEA/D on most test cases since these two algorithms both embed a problemspecific local search process (i.e., individual variation operators for
+MODE-SDAS). This observation also demonstrates the effectiveness of the proposed individual variation operators. Third, compared with
+MOEA/D-MA that also adopts local search and decomposition-based mechanics, the proposed MODE-SDAS still obtains better results on most test cases. It can be attributed to the adaptive selection strategy of MODE-SDAS, which can adaptively allocate computation resources to different subspaces for improving convergence.
+Moreover, we provide the CPU time of each method in Table 6. It can be found that the computational efficiency of MODE-SDAS is at a moderate level but inferior to NSGAII, MOEA/D, and LGNSGAII. It can be explained that MODE-SDAS has an additional local search component that affects the computational efficiency. This explanation can be further demonstrated by the results of other memetic algorithms that also have local search components (i.e., MOEA/D-MA and D-MOMATD). All memetic algorithms take more computational time compared with NSGAII, MOEA/D, and LGNSGAII. Meanwhile, compared with the memetic algorithms, MODE-SDAS consumes less CPU time on most of the test cases. The efficiency of MODE-SDAS can be attributed to the adaptive resource allocation strategy that can improve the convergence of the algorithm.
+To visually compare the performance of the six algorithms in terms of balancing convergence and diversity, we present the output solutions of the six algorithms in the objective space. For each test case, the output solutions of the six algorithms of 30 runs are used to plot approximate Pareto fronts, as shown in Fig. 9, where the solutions obtained
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 9. Output solutions obtained by all algorithms on all test cases.
+by MODE-SDAS, D-MOMA-TD, MOEA/D-MA, LGNSGAII, MOEA/D, and
+NSGAII are represented by blue, green, red, pink, cyan and blackish green, respectively. In each subfigure, the F1-axis, F2-axis, and F3-axis denote the rate of unscheduled task profits, the unbalance degree of antennas, and the average completion timeliness of tasks, respectively.
+A smaller value of each objective function indicates better performance.
+It can be intuitively observed that the proposed MODE-SDAS obtains the best results for each case in terms of distribution and convergence compared with other algorithms, which is also in line with the above metric comparison results.
+To verify the algorithms in terms of optimization efficiency and convergence speed, the convergence curves represented by IGD values of
+NSGAII, MOEA/D, LGNSGAII, MOEA/D-MA, D-MOMA-TD, and MODESDAS are presented in Fig. 10. We only provide the results on 8 representative test cases (i.e., Case4, Case6, Case8, Case10, Case16, Case18,
+Case20, and Case22) that can cover different problem scales due to the limited space. As can be seen from Fig. 10, MODE-SDAS can converge to a smaller IGD value at a faster speed. While other competitors such as MOEA/D and NSGAII are more prone to fall into local optimum, resulting in a poor convergence for solving our problem. Besides, the
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 10. Convergence process of all algorithms on representative test cases.
+memetic algorithms MOEA/D-MA and D-MOMA-TD obtain the secondbest and third-best results on all test cases respectively, which indicates that the local search is indeed effective. Nevertheless, MOEA/D-MA and
+D-MOMA-TD are inferior to MODE-SDAS since the adaptive selection strategy of MODE-SDAS can further improve its convergence. Therefore, the results of convergence curves further demonstrate that the proposed MODE-SDAS is effectively improved by the adaptive selection strategy and problem-specific variation operators.
+5.3. Knee point analysis
+When solving the proposed MO-SRSP, the algorithm will provide a set of solutions, but it is still nontrivial for decision-makers to articulate preferences without a priori knowledge. In this regard, solutions such as knee points may be of interest [49]. The knee point is an important geometric feature on the Pareto front, which requires an unfavorably large sacrifice in one objective to gain a small improvement in other objectives. In this study, we also provide a knee point as the output for each problem to satisfy the decision-makers who do not have prior knowledge. We adopt a distance-based strategy that calculates the distance between individuals and an extreme line to identify knee points [50].
+To better analyze the knee points, we take test case 10 as an example and randomly select a knee point obtained by each algorithm from 30 runs. Six knee points generated by the six algorithms are analyzed and compared in Figs. 11–13.
+In Fig. 11, we analyze the knee points by providing the completion rates of tasks in different ranges of task priority values. It can be found that the proposed MODE-SDAS schedules more tasks whose priority values are in the range [4, 9]. For the tasks whose priority values are
+10, MODE-SDAS, D-MOMA-TD and MOEA/D-MA achieve the same completion rates. Hence, although LGNSGAII schedules more tasks whose priority values are in the range of [1, 3], MODE-SDAS scheduled more high-priority tasks, such that MODE-SDAS still can obtain higher overall task profits.
+As illustrated in Fig. 12, we give the working time of seven antennas used for executing tasks in the knee points obtained by different algorithms. For the antennas used in the scheduling scheme obtained by MODE-SDAS, it shows that each antenna has the longest working time since each antenna executes more tasks, and the working time of these antennas is more balance.
+Fig. 13 presents the percentage of tasks scheduled with different ranges of timeliness values. It is clear that MODE-SDAS owns the most scheduled tasks whose timeliness values fall into the range of [0, 1).
+Meanwhile, the tasks scheduled with the timeliness value of 1 less appear in the scheduling scheme obtained by MODE-SDAS.
+In summary, it can be intuitively seen that the knee point obtained by MODE-SDAS provides a better scheduling scheme compared with
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 11. Completion rates of tasks in different ranges of task priority values.
+Fig. 12. Working time of different antennas.
+Fig. 13. Percentage of scheduled tasks scheduled with different timeliness values.
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 14. Impacts of Ron results.
+other algorithms. The reason can be attributed to the individual variation operators designed for MODE-SDAS, which will provide a further objective-specific search after generating a new individual.
+5.4. Algorithm parameter sensitivity analysis
+In order to reasonably determine the values of key parameters of the proposed algorithm, we carry out sensitivity experiments. We first determine a reasonable range of each parameter based on engineering experience and previous references, and then analyze the appropriate value of each parameter based on further experiments. In the proposed
+MODE-SDAS, there are two tunable parameters: the memory generations Rand the neighborhood size L. We select 6 representative test cases, including Case 4, Case 8, Case 10, Case 16, Case 20, and Case
+22, to conduct the sensitivity experiments. The selected test cases can cover different problem scales and distribution types of ground stations to ensure the robustness of sensitivity analysis results. The sensitivity experiments are conducted by varying the value of Rfrom 2 to 9 and the value of Lfrom 2 to 16, respectively.
+Figs. 14–15 show the IGD values obtained by MODE-SDAS over 15 runs. It is clear that different values of each parameter have a significant impact on the algorithm performance. Particularly, as illustrated in Fig. 14, with the increase of memory generations R, the mean values of IGD obtained by MODE-SDAS first decrease and then rise, reaching the lowest level when Ris set to 5. It indicates that MODE-SDAS can produce high-quality results on different test cases when Ris equal to
+5. Therefore, we recommend setting parameter Ras 5. A similar trend can be observed when varying the neighborhood size L, as shown in
+Fig. 15. According to the observation, we recommend setting parameter
+Las 10.
+5.5. Impacts of problem settings on scheduling results
+5.5.1. Problem scale
+The number of tasks and satellites involved in the problem reflects the scale of the problem. Figs. 16–17 summarize the objective function values obtained by MODE-SDAS with the different problem scales.
+Fig. 16 shows the results on the set of scenarios in which the ground stations are distributed scattered while Fig. 17 gives the results on the set of scenarios in which the ground stations are distributed concentrated. The problem scale increases from case 1 to case 12 in Fig. 16 and from case 13 to case 24 in Fig. 17, respectively. It is clear that the increase in the problem scale will lead to a decrease in the unbalance degree of antennas. Meanwhile, as the problem scale increases, the rate of unscheduled task profits and the average completion timeliness of tasks will also increase linearly. These observations can be explained as follows. As the problem scale increases, the antennas will be occupied by many tasks and each of them would be overloaded, such that the unbalance degree of antennas would be eliminated. Meanwhile, the conflicts among tasks will be aggravated, leading to difficulties in scheduling more tasks while satisfying timeliness requirements. Therefore, the performance of MODE-SDAS would deteriorate when it is used to solve large-scale problems. In practical applications, we recommend that users could use our method to solve small- and medium-scale problems to obtain a high-quality scheduling scheme. It also should be noted that the objective function values still keep at an acceptable level, which indicates that MODE-SDAS can still be implemented to solve large-scale problems if the users can afford a light loss in the scheduling quality.
+5.5.2. Type of ground station distribution
+To investigate the impacts of the distribution type of ground stations, we present the scheduling results of two sets of test cases with different distribution types, as shown in Figs. 18–19. Particularly,
+Fig. 18 shows the scheduling results of Case 6 and Case 18, and Fig. 19 shows the scheduling results of Case 10 and Case 22. It can be found a similar trend that the distribution type of ground stations also has significant impacts on the scheduling results. In the case of concentrated distribution type of ground stations, MODE-SDAS obtains a lower rate of unscheduled task profits and average completion timeliness of tasks, and a higher unbalance degree of antennas. This observation is caused by the conflicts of tasks. Specifically, when the distribution of ground stations is concentrated, the visible time windows are also
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 15. Impacts of Lon results.
+Fig. 16. Scheduling results with different problem scales when ground station distribution is scattered.
+concentrated and overlapped with each other, such that the number of available time windows for executing the tasks would be decreased and the tasks would be in conflict easily. In practical applications, this observation suggests that the decision-makers should choose the ground stations that are subject to scattered distribution to obtain higher-quality scheduling results.
+6. Conclusions
+In this paper, we established a MO-SRSP model based on the specific characteristics of the satellite range scheduling and the diverse requirements of users, which simultaneously considers three optimization objectives (i.e., the overall profits of tasks, load balance of antennas,
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+Fig. 17. Scheduling results with different problem scales when ground station distribution is concentrated.
+Fig. 18. Scheduling results with different ground station distribution types (on cases 6 and 18).
+Fig. 19. Scheduling results with different ground station distribution types (on cases 10 and 22).
+
+Swarm and Evolutionary Computation 83 (2023) 101396
+
+T. Wang et al.
+and completion timeliness of tasks). To solve the problem, we propose a solution method called MODE-SDAS. The proposed MODE-SDAS adopts a space division strategy and an adaptive selection strategy for balancing the diversity and convergence of the population. Besides, the problem-specific coding and encoding method, DE operator, as well as individual variation operators are designed for MODE-SDAS to further improve the search capability of the algorithm.
+Furthermore, we designed a set of simulation test cases by considering different distributions of ground stations as well as different scales of satellites and tasks. Comparison experiments on the designed test cases show that the proposed MODE-SDAS is superior to four competitors (i.e., NSGAII, MOEA/D, LGNSGAII, MOEA/D-MA, and DMOMA-TD) in terms of metrics IGD, Δp, and HV. To assist the decisionmakers who do not have prior knowledge in selecting a solution from the output solutions obtained by MOEAs, we use a knee point as the output solution of a problem and further analyze the knee points obtained by the six algorithms. The analysis results of knee points indicate that the knee point obtained by the proposed MODE-SDAS can yield a better scheduling scheme. Finally, we investigate the impacts of different key parameters and problem settings on the scheduling results. The results of parameter sensitivity experiments suggest that the memory generations Rshould be 5 and the neighborhood size L should be 10. The results also suggest the decision-makers choose the ground stations that are subject to a scattered distribution to obtain a better scheduling scheme.
+There also exist several limitations in this study. For example, the performance of the proposed algorithm will deteriorate on large-scale problems. Although the current scheduling results obtained in experiments are at an acceptable level, with the development of satellite technology, the scale of MO-SRSPs would continuously increase and the algorithm would face daunting challenges in the future. On the other hand, as the increase of problem scale, the population-based nature of
+MOEAs will yield a sharp increase in time consumption. Furthermore, in practical applications, some unexpected events would happen during the satellite range scheduling, such that the scheduling scheme needs to be adjusted in time. In this study, we only consider static scheduling, and the proposed algorithm may not be adequate to solve dynamic
+MO-SRSPs. In future studies, as the combination of machine learning technology and optimization algorithm has been proven very promising [5,51], we would like to develop more efficient algorithms based on machine learning technologies to address large-scale MO-SRSPs and dynamic MO-SRSPs.

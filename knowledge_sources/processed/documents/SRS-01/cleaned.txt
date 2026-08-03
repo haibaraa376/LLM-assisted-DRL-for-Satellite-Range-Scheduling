@@ -1,0 +1,294 @@
+LLM-assisted Deep Reinforcement Learning for
+Satellite Range Scheduling
+Ke Li∗, Mingying Yang∗, Jing Li†, Bo Peng∗, and Xumin Yu‡
+∗Southwest Jiaotong University, Chengdu, 611756, China
+†City University of Hong Kong, Hong Kong, China
+‡China Academy of Space Technology, China
+Abstract—Satellite networks have emerged as a critical infrastructure in communication systems, providing wide coverage and global connectivity. However, the growing scale and crossdomain nature of the satellite range scheduling (SRS) problem make efficient satellite and ground station resources scheduling ever more challenging, especially for emergency tasks. Conventional scheduling based on deep reinforcement learning (DRL) suffers from sparse rewards in dynamic cross-domain satellite network, limiting both training speed and solution quality. In this study, we propose RAPPO, a Retrieval-Augmented Proximal
+Policy Optimization framework that leverages retrieval-augmented generation (RAG) to feed external SRS knowledge into a large language model (LLM) for iterative reward function generation.
+RAPPO comprises two modules: (1) LLM prompt initialization, which retrieves knowledge of SRS via RAG; and (2) reward function optimization, where the LLM generates and continuously optimizes the DRL reward function based on scene descriptions and reward-shaping knowledge retrieved during optimization.
+In simulation experiments, RAPPO achieves an approximate
+48.23% improvement in convergence speed, with load-balance and transmission timeliness enhanced by about 30.83% and
+31.04%, respectively, compared to conventional PPO. These results demonstrate that integrating RAG-enhanced LLM reasoning into reward design substantially improves DRL training efficiency and scheduling effectiveness for cross-domain SRS.
+Index Terms—satellite range scheduling, deep reinforcement learning, reward shaping, large language model, retrievalaugmented generation.
+I. INTRODUCTION
+With the widespread application of satellites in navigation, weather forecasting, earth observation, disaster relief, as well as military and civil scientific applications [1], [2], efficient and intelligent scheduling has become essential. Especially with the increasing frequency of natural disasters and military conflicts, rapid emergency satellite response has become a routine requirement, and the high demand for timeliness has increased the complexity of scheduling. Satellite range scheduling (SRS) problem [3] refers to the management of satellite and ground station resources to satisfy the satellites’ communication requests, and it has emerged as a critical research
+This work was supported by the National Natural Science Foundation of
+China
+(62372192,
+62202392),
+National
+Key
+Laboratory
+Fund
+Project(6142807032302), the ChunHui Program of the Ministry of Education of China (202200208), the Project of Network and Data Security Key Laboratory in Sichuan Province (NDS2022-1), the Natural Science Foundation of Sichuan Province (2023NSFSC0459), the Sichuan Science and Technology
+Program (2025ZDZX0013), and Hong Kong Research Grants Council (CityU
+PDFS2425-1S02). Ke Li∗is the corresponding author.
+focus in response to the increasing complexity and urgency of satellite communication. Moreover, to alleviate the shortage of time-window resources caused by the surge in satelliteground communication tasks, cross-domain SRS is playing an increasingly vital role. However, the complex constraints inherent in cross-domain scenarios significantly increase the difficulty of obtaining feasible and effective solutions.
+An optimization model based on mixed-integer linear programming has been proposed to assign tasks and communication time windows with ground stations for each satellite, aiming to maximize satellite utilization [4]. However, the algorithm used to solve this model is primarily designed for static scenarios and struggles to find an optimal solution in dynamic environments. A finite Markov decision process incorporating heuristic algorithm has been proposed to optimize scheduling performance, adopting deep reinforcement learning (DRL) to solve the SRS problem in dynamic network environment and enabling quick adjustments to schedules in response to new requests or changes in satellite availability [5]. However, these algorithms overlook the potential of communication links across different satellite domains and struggle to ensure task timeliness in scenarios with a high volume of urgent tasks.
+A hierarchical sparse resource representation scheme has been proposed to more effectively characterize the dynamic states of cross-domain resources in satellite networks, and multiagent reinforcement learning is used to coordinate data transmission strategies between satellites in different domains [6].
+Although these works have achieved certain results in the
+SRS problem, they still ignore the timeliness of satellite tasks and the load-balance of data transmission resources in crossdomain scenarios. Moreover, The cross-domain SRS problem involves multiple constraints, such as ground station availability and communication windows. These constraints increase the difficulty for the DRL agent, which has a high demand for reward signals, to achieve successful data transmission. As a result, data transmission may encounter the problem of sparse rewards [7], which significantly hinders the efficiency of agent training.
+As for the problem of sparse rewards in DRL, reward shaping can be applied to adjust the reward signal [8], offering additional feedback to facilitate faster learning. This is particularly important as the effectiveness of policy learning is closely influenced by how the reward function is constructed. Reward
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+
+GLOBECOM 2025 - 2025 IEEE Global Communications Conference | 979-8-3315-7781-0/25/$31.00 ©2025 IEEE | DOI: 10.1109/GLOBECOM59602.2025.11431680
+Authorized licensed use limited to: SOUTHWEST JIAOTONG UNIVERSITY. Downloaded on July 09,2026 at 02:52:07 UTC from IEEE Xplore.  Restrictions apply. 
+ shaping relies on hand-crafted reward functions, but reward functions are difficult to design [9]. In the cross-domain SRS problem with a large number of urgent tasks, both timeliness and load-balance need to be considered, further increasing the difficulty of designing the reward function of DRL.
+In light of the above insights, we propose a retrievalaugmented proximal policy optimization by reward function generation (RAPPO) framework with optimization objectives of data transmission timeliness and load-balance of data transmission resources to accelerate the training of DRL agents in cross-domain SRS problem. This framework contains two modules. The first module is large language model (LLM) prompt initialization, which aims to retrieve the knowledge relate to
+SRS and reward shaping in the external knowledge base through retrieval-augmented generation (RAG) and input it to LLM as part of the prompt. In the second module, LLM generates the reward function of DRL using task description and external knowledge, and iteratively optimizes it. The contributions of this work are as follows:
+• This paper investigates the critical challenge of ensuring timely data transmission while achieving efficient load balancing across multiple domains within the cross-domain
+SRS problem.
+• To address this challenge, we introduce an approach based on DRL, in which the reward function is dynamically designed and iteratively optimized through the reasoning capabilities of LLM.
+• Furthermore, by leveraging RAG to incorporate external knowledge from relevant knowledge bases into the LLM input, we enhance the model’s ability to generate more precise and contextually aware reward functions, thereby improving the overall performance and adaptability of the proposed approach.
+II. SYSTEM MODEL AND PROBLEM STATEMENT
+A. Network Model
+We focus on a typical satellite network that comprises the ground stations and satellites in three distinct service functional domains, as shown in Fig. 1.Satellite communication domain, observation domain and navigation domain are denoted by D1,
+D2 and D3 respectively, each containing multiple decentralized satellites. Specifically, csi, osi, and nsi represent the i-th communication, observation, and navigation satellites, with the numbers of satellites in these domains given by I1, I2, and I3.
+The set of all satellites is denoted by SA. gsg represents the g-th ground station of set GS, with the total number denoted as ngs. In addition, vik denotes the i-th satellite in domain Dk, where k ∈1, 2, 3.
+B. Communication Model
+Based on actual link establishment rules [10], we adopt the widespread inter-satellite link (ISL) configuration for intradomain connectivity. Specifically, each observation satellite establishes connection with four adjacent observation satellites.
+To establish the inter-domain link (IDL), satellites connect to the closest satellite in each other domains. Taking the
+Fig. 1: An example of satellite range scheduling.
+observation domain and communication domain in Fig. 1 as an example, the IDL is established between the observation satellite os3 and the communication satellite cs3. And we express both ISL and IDL as lt(vik, m), where m denotes the relay satellite vi′k′. IDL enables the communication and navigation domains to assist in the transmission of data within the observation domain.
+The data transmission rate on ISL and IDL [6] can be represented by
+Cst(vik, m)
+= PsstGtr(vik)Gm reLt(vik, m)
+KT · (Eb/N0)req · M
+,
+(1) where Lt(vik, m) is the free space loss, it can be expressed as
+Lt(vik, m) = ( c
+4π · Slt(vik, m) · F )2,
+(2)
+Psst denotes the satellites’ constant transmit power, Gtr(vik) and Gm re are the transmit and receive antenna gains, K is the
+Boltzmann’s constant, T denotes total system noise temperature, c is the speed of light, and F denotes the communication center frequency.
+Due to limited transceivers, each satellite can also establish at most one satellite ground link (SGL) per time slot, written as lt(vik, gsg), with g = 1, 2, ..., ngs indexing the ground stations.
+The data transmission rate on SGL [6] can be calculated by
+Cgt(vik, gsg) = B · log2(1 + SNRt(vik, gsg)),
+(3) where the calculation for the signal-to-noise ratio (SNR) during the time slot t can be performed as follows:
+SNRt(vik, gsg)
+= PsgtGtr(vik)Gg reLt(vik, gsg)Lt p
+N
+,
+(4) where B is the bandwidth, Psgt is the satellites’ transmit power, Gg re is the receiving antenna gain of ground station
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+
+Authorized licensed use limited to: SOUTHWEST JIAOTONG UNIVERSITY. Downloaded on July 09,2026 at 02:52:07 UTC from IEEE Xplore.  Restrictions apply. 
+ gsg, Lt(vik, gsg) and Lt p denote the free space and propagation losses, and N indicates noise.
+C. Task Model
+The data transmission tasks DT generated by the satellite observation domain D1 focus on the transmission of observation data. DT represents the set of all tasks available during the scheduling range. The transmission task is generated dynamically, and ndt = |DT| keeps increasing. A data transmission task dtj ∈DT can be represented by dtj = {idj ik, idj g, pj, cj, aj, bj, ej, dj},
+(5) where idj ik represents the satellite vik to which data transmission task j belongs, idj g denotes the ground station gsg to which task j is to be transmitted, pj denotes the priority of task j, cj is the data amount of task j, bj represents the generation time or arrival time of task j, ej is the expiration time of task j, dj represents the transmission duration of task j.
+The survival time of task j is determined by priority and can be calculated by aj =
+
+
+
+
+
+
+
+T1, pj ∈[1, 3] ,
+T2, pj ∈[4, 6] ,
+T3, pj ∈[7, 9] ,
+T4, pj = 10.
+(6) where T1 ≥T2 ≥T3 ≥T4.
+D. Data Transmitting Model
+To ensure the timely transmission of task data, task scheduling will be performed. We let xt,j ikv ∈[0, 1] and yt,j ikv denote the task scheduling decision of task dtj. The decision variable xt,j ikv is the proportion of data cj transmitted from vik to v in the time slot t, and yt,j ikv is the start time of transmission from vik to v in the time slot t, where v ∈{SA, GS} is the relay satellite or the ground station.
+Due to orbital motion, the availability of ISL, IDL and SGL is time-varying, we define transmission window tw ∈TW,
+TW =
+
+TWvik,gsg, TWvik,m, TWm,gsg
+	 is the set of transmission window, and tw can be represented by twikv = {idik tw, idv tw, btw, etw},
+(7) where idik tw is the satellite vik to which transmission window twikv belongs, idv tw is the relay satellite or ground station to which transmission window twikv belongs. And btw and etw represent the start time and end time of twikv, respectively.
+The ground station communicates with the satellite through an antenna. Before transmitting task data, it takes some time to change the angle of the antenna in order to establish a SGL.
+The time consumed is called calibration time, which can be calculated by
+σg dtj→dtj′ = |Anglej −Anglej′| rvgs
+,
+(8) where Anglej is the angle when the ground station completes task j, and Anglej′ is the angle when the ground station starts task j
+′, rvgs denotes the rotation speed of antenna.
+When a task j is transmitted successfullys, the data transmission timeliness T is evaluated by considering both its priority level and survival time [11], which together reflect the task’s importance and urgency within a certain time slot.
+T =
+X j∈DT
+
+X k=1
+Ik
+X i=1
+X v∈{SA,GS} xt,j ikv · pj · WT t,j ikv,
+(9) where WT t.j ikv is the normalized result of the survival time of task j in time slot t.
+WT t,j ikv = ej −yt,j ikv aj
+.
+(10)
+The load-balance of data transmission resource is used to evaluate the balance of the satellite’s available transmission window utilization [12], and it is calculated by
+B =
+X j∈DT
+  bmax
+− v u u t
+
+X k=1
+Ik
+X i=1
+ 
+U j ik −
+P3 k=1
+PIk i=1(1 −U j ik) nsa
+!2
+/nsa
+!
+,
+(11) where bmax is the the maximum load-balance of data transmission resource, U j ik represents the utilization rate of the transmission window of satellite vik by task j, that is, the ratio of the scheduled transmission window to the total transmission window of satellite vik.
+U j ik =
+P t∈T
+P v∈{SA,GS} djxt,j ikv
+P t∈T
+P v∈{SA,GS} twikv
+.
+(12)
+E. Problem Formulation
+We formulate an optimization problem that aims to determine the transmission amount of task data and the starting time for transmitting. The goal is to maximize the timeliness of data transmission and the load-balance of the transmission resources.
+The optimization problem can be formulated as
+P : max xt,j ikv,yt,j ikv
+(T, B)
+(13) s.t.
+bw ≤yt,j ikv, i ∈[1, Ik], k ∈[1, 3], v ∈{SA, GS}, (14) yt,j ikv + xt,j ikv · dj ≤ew, xt,j ikv ∈[0, 1],
+(15) bj ≤yt,j ikv ≤ej,
+(16)
+σg dtj→dtj′ ≤yt,j
+′ ikv −(yt,j ikv + xt,j ikv · dj).
+(17)
+The constraints (14) and (15) ensure that the actual transmission time of the task j is within the transmission window.
+Constraint (16) means that the start time of the task must be within the survival time of the task. Constraint (17) ensures that the time gap between the start of the next task and the end of the current task at the same ground station is greater than the station’s calibration time.
+The cross-domain SRS problem is a typical NP-hard combination problem. In addition, the increase of dynamic and emergency tasks further improves the complexity of the crossdomain SRS problem. To solve this problem, we adopt a multiagent deep reinforcement learning (MADRL) approach.
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+
+Authorized licensed use limited to: SOUTHWEST JIAOTONG UNIVERSITY. Downloaded on July 09,2026 at 02:52:07 UTC from IEEE Xplore.  Restrictions apply. 
+
+III. RETRIEVAL-AUGMENTED PROXIMAL POLICY
+OPTIMIZATION BY REWARD FUNCTION GENERATION
+In this section, we will elaborate on each part of the proposed
+RAPPO framework. The core of RAPPO is to utilize RAG to obtain the correlation between the reward function design task and external knowledge in the satellite scenario, and then provide the LLM with available knowledge, enhance the ability of LLM to generate reward functions. The proposed RAPPO is shown in Fig. 2. The designing of the reward function can be divided into two parts: LLM prompt initialization and reward function optimization.
+Fig. 2: The process of RAPPO.
+A. Multi-Agent Proximal Policy Optimization
+In this part, we will deal with how to optimize the satellite scheduling decision variables at each time slot t. We can convert this optimization problem in (13) to a sequential decision-making problem and use the multi-agent proximal policy optimization (MAPPO) algorithm to solve the specific problem. MAPPO in cross-domain satellite network refers to learning problem in which multiple satellites can learn decision policy at the same time. Each satellite can only gather local observations from the environment, so a partially observable
+Markov decision process (POMDP) model with state space and action space is initially developed.
+1) State Space: The satellite network status at time slot t is explained as a array, which can be defined as:
+St = {DTt, TWt, Tt, Bt} ,
+(18) where DTt and TWt are the set of current transmission tasks and available transmission windows, Tt and BT are the current transmission timeliness and load-balance. The observation space of the i-th satellite in time slot t can be characterized as: oi t =
+
+
+dtj,
+X v∈{SA,GS} wt iv
+
+
+,
+(19) where dtj is the task that needed to be transmitted by satellite i, P v∈{SA,GS} wt iv is the remaining transmission window between the current satellite i and v.
+2) Action Space: The action space consists of the transmission proportion of data cj and actual transmission time decided by each satellite according to DRL policy. The action of satellite i in time slot t is represented by ai t = n xt,j iv , yt,j iv o
+.
+(20)
+Since the reward function of DRL will be shaped by the proposed RAPPO, this component of the MDP is not specified here.
+3) Learning Procedure of MAPPO: MAPPO employs two neural networks: an actor network parameterized by θ and a critic network (value function) parameterized by φ, both of which are shared across every agent [13]. The actor network,
+πθ, takes each agent’s observation oi t and outputs the mean and standard deviation vectors of a Multivariate Gaussian, from which continuous actions are sampled. Its training objective is to maximize the clipped advantage:
+L(θ)
+=
+
+Bn
+B
+X b=1 n
+X i=1 min(ri
+θ,bAi b, clip(ri
+θ,b, 1 −ε, 1 + ε)Ai b),
+(21) where ri
+θ,b =
+πθ(ai b|oi b)
+πθold(ai b|oi b), the advantage estimate Ai b is computed using the GAE method. The critic network, denoted
+Vφ : S →R, minimizes a clipped value loss:
+L(φ) =
+
+Bn
+B
+X b=1 n
+X i=1 max h
+(Vφ(si b) −bRb)2,
+(clip(Vφ(si b), Vφold(si b) −ε, Vφold(si b) + ε) −bRb)2i
+,
+(22) where bRb is the discount reward. B is the batch size and n the number of agents. Algorithm 1 describes the training procedure of MAPPO. The time complexity of MAPPO is O(stepmax × ndt × n).
+B. Retrieval-Augmented Reward Function Generation
+In order to alleviate the problem of sparse rewards while considering timeliness and load-balance, the reward function for the SRS problem is shaped by LLM. Thus we introduce the proposed RAPPO framework, which mainly consists of two parts: LLM prompt initialization and reward function optimization.
+1) LLM Prompt Initialization: We first use the environment code and task description as the initial prompts of LLM. In order to enhance LLM’s understanding of SRS scenario, RAG is used to expand LLM’s knowledge on satellite range scheduling problem. Specifically, generalized scheduling model knowledge for SRS problem is compiled, and the general method of DRL reward shaping is considered to construct an external knowledge base covering SRS problem and DRL reward shaping. Subsequently, the knowledge base is split into text chunks. And then the embedding model (CodeBERT) [14] is used to vectorize the text chunks and initial prompts. Finally, after calculating the similarity between the text chunks of initial prompts and the text chunks of external knowledge, the top-k most relevant
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+
+Authorized licensed use limited to: SOUTHWEST JIAOTONG UNIVERSITY. Downloaded on July 09,2026 at 02:52:07 UTC from IEEE Xplore.  Restrictions apply. 
+
+Algorithm 1: MAPPO
+Input: Initial θ, φ
+Output: Trained policy πθ
+1 for step ≤stepmax do
+
+Random select tasks from database and reset the initial state
+
+Set buffer D = ∅
+4 for j = 1 to ndt do
+5 for i = 1 to nsa do
+6 aj i = πθ(aj i|oj i)
+7 end
+
+Execute actions aj, observe rj, sj+1
+9 end
+
+Get each satellite’s trajectory τi = {oj i, aj i, rj i }
+
+Compute discount reward-to-go R
+
+Compute advantage estimate A via GAE on τ
+
+Put (oj i, aj i, R, A) into the buffer D
+14 for mini-batch k = 1, ..., K do
+
+Sample random mini-batch from D
+
+Adam update θ on L(θ)
+
+Adam update φ on L(φ)
+18 end
+19 end
+20 return Trained policy πθ.
+text chunks in the knowledge base are selected and integrated into the LLM’s prompts along with the initial prompts to help the LLM design more accurate reward functions.
+2) Reward Function Optimization: LLM (GPT-4o) designs
+DRL reward functions based on user prompts and relevant text chunks retrieved from the knowledge base. Subsequently, the generated string containing the DRL reward function is parsed into executable reward function code and added to the environment code for training the DRL agent. After the training is completed, the performance of the agent is evaluated based on the training data, and the training data is used as prompts to further optimize the reward function designed by LLM. This iterative process gradually improve the quality of the reward function and the decision-making performance of the DRL agent.
+IV. PERFORMANCE EVALUATION
+We conduct comprehensive simulation experiments to evaluate the performance of MAPPO in satellite network. Firstly, the experimental setup is introduced. Then, we compare the performance results of MAPPO with three baselines.
+A. Experiment Setup and Baselines
+The experiments have been conducted in Python-3.8 with
+Pytorch-based DRL framework. And we use STK-11.2 to simulate the task scheduling scenario with 15 Chinese satellites and 4 ground stations. The transmission rates of ISLs, IDLs and SGLs are 80Mbps and 60Mbps respectively, and the transmission bandwidth of SGLs is 80MHz. The scheduling period is 24 hours.
+In the proposed framework, the number of reward functions generated by the LLM per iteration is set to 8, with 5 optimization iterations performed. Furthermore, the actor network learning rate of PPO algorithm is specified as 10−4, the critic network learning rate is configured as 10−3, and the discount factor is set to 0.99.
+We introduce three baselines to verify the superiority of our proposed framework, including one traditional DRL algorithm and two reward shaping algorithms, which are respectively given by
+• PPO [13]: It optimizes the policy network by clipping the probability ratio of actions, preventing the policy from updating too drastically and ensuring the stability of training. As a comparison algorithm, PPO adopts humans’ reward function without reward shaping.
+• PPO-Lya [15]: It is based on the PPO algorithm, but differs in that it shapes the reward function using Lyapunov function to accelerate the training speed of DRL agent.
+• LLM-PPO [16]: It also shapes the reward function of the
+PPO algorithm. Unlike PPO Lya, the LLM-PPO algorithm utilizes LLM’s understanding and reasoning abilities to design the reward function.
+B. Results
+1) Convergence Evaluation: Fig. 3 evaluates the convergence of RAPPO and comparison schemes. The convergence speed of DRL training process reflects the ability of reward function to deal with sparse rewards problem. We can obviously see that the load-balance and timeliness of all algorithms gradually converge as the training progresses, and RAPPO converges the fastest. Such a tendency greatly validates the effectiveness of
+RAPPO in designing reward functions, indicating that LLM can effectively understand complex SRS problem. The comparison with LLM-PPO also indicates that RAG plays a significant role in the scenario understanding of LLM.
+(a) Load-balance
+(b) Timeliness
+Fig. 3: Convergence in terms of load-balance and timeliness.
+2) Parameter Analysis of RAPPO: We evaluate the advantages and disadvantages of different chunking strategies of
+RAPPO. The experimental results are shown in Fig. 4. The load-balance results indicate that the strategy of splitting by characters is generally optimal, particularly when the number of text chunks is k = 5. The timeliness results also suggest that
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+2025 IEEE Global Communications Conference: Selected Areas in Communications: Satellite and Space Communications
+
+Authorized licensed use limited to: SOUTHWEST JIAOTONG UNIVERSITY. Downloaded on July 09,2026 at 02:52:07 UTC from IEEE Xplore.  Restrictions apply. 
+ splitting by characters is the most effective, with k = 7 yielding the best performance. For the fixed size strategy, larger chunks
+(with a chunk size of 1024 characters) outperform smaller chunks (with a chunk size of 256 characters) in both metrics because this strategy provides richer external knowledge. However, due to the fixed size partitioning strategies cutting off important semantic boundaries, information that does not match the initial prompt is retrieved, thereby reducing the quality of the reward function. Taking into account the performance of different chunking strategies in load-balance and timeliness, our framework adopts the chunking strategy of splitting by characters and sets the number of selected text chunks to 5.
+(a) Load-balance
+(b) Timeliness
+Fig. 4: Performance under different chunking strategies.
+3) Correlation Analysis of Reward Functions: The novelty of the reward function designed by the proposed algorithm is evaluated by calculating the Pearson correlation coefficient between the reward function generated by RAPPO and the reward function designed by humans [16]. As shown in Fig. 5, the blue points indicate that the performance of the generated reward function is better than the humans’ reward function. As can be seen from the figure, the reward function designed by RAPPO is weakly correlated with humans’ reward function, and the performance of most reward functions is better than humans’ reward function designed by humans. This provides a new reward function design idea that goes beyond human experience for the complex scenario of satellite mission scheduling.
+(a) Load-balance
+(b) Timeliness
+Fig. 5: Correlation between reward functions.
+V. CONCLUSION
+In this paper, the satellite selection and task execution time determination of data transmission tasks in cross-domain satellite networks are studied. In order to improve the timeliness and load-balance of data transmission resources, a reward function design framework is proposed, which provides general satellite modeling knowledge through RAG and designs competitive reward function through LLM’s understanding of the scenario.
+For future work, we plan to explore other multi-agent DRL algorithms, as well as methods for handling sparse rewards, to solve cross-domain SRS problems.

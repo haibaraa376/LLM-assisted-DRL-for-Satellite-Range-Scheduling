@@ -1,0 +1,490 @@
+Research Article
+Bo Ren*, Zhicheng Zhu, Fan Yang, Tao Wu, and Hui Yuan
+High-altitude satellites range scheduling for urgent request utilizing reinforcement learning https://doi.org/10.1515/astro-2022-0033 received June 10, 2022; accepted July 10, 2022
+Abstract: High-altitude satellites are visible to more ground station antennas for longer periods of time, its requests often specify an antenna set and optional service windows, consequently leaving huge scheduling search space. The exploitation of reinforcement learning techniques provides a novel approach to the problem of high-altitude orbit satellite range scheduling. Upper sliding bound of request pass was calculated, combining customized scheduling strategy with overall antenna effectiveness, a frame of satellite range scheduling for urgent request using reinforcement learning was proposed. Simulations based on practical circumstances demonstrate the validity of the proposed method.
+Keywords: satellite range scheduling, reinforcement learning, slide
+1 Introduction
+To ensure the required and reliable satellite-ground communication capability, a set of ground stations are placed over the country and abroad to provide TT&C services, satellite payload data reception services, and launcher tracking services for supported missions. A suite of applications that can cope with satellite range scheduling were developed. These applications are automated and rules based, but the scheduling strategy is evolved in line with the space access requirement of current and future missions. Satellite range scheduling means scheduling communications between satellites in space and antennas on the ground. Satellite communicate with ground station antenna only during visible window. With the arrival of new request for satellite-antenna pass, the scheduling algorithm is in charge of solving conflict among passes.
+All the requests are expected to be satisfied with certain constraints. Urgent request from satellite reaches the scheduling application due to many kinds of uncertainties, such as random satellite observation, scheduled antenna breakdowns, mission cancellations, and other urgent events.
+In general, regardless of normal request or urgent request, the ground antennas are oversubscribed, and all the requests cannot be satisfied.
+For high-altitude orbit satellites, there are two special situation of satellite-antenna pass in the scheduling problem. First, the visible time is much longer than the low-altitude satellites, but only part of the visible time can be arranged to request satellite. Second, to overcome the congestion issue between the scheduled pass and request in future (before the start time of the scheduled pass), allocated passes may be adjusted in the visible window on different antennas. Since the search space is usually large and with specific constraints, solving the problem of high-altitude satellite range scheduling is very computationally demanding.
+In the past decades, various techniques are studied to generate conflict free and high-efficient solutions for the problem of satellite range scheduling (Petelin et al. 2021,
+Luo et al. 2017, Li et al. 2015, Li et al. 2014, Zufferey et al.
+2008, Zufferey and Michel 2015, Ling et al. 2013, Badaloni et al. 2007, Bagchi 2009, Xhafa et al. 2013, Zhang et al.
+2014). Heuristics methods provide a solution quickly, but fails to scale to larger and more complex problems. Metaheuristics such as genetic algorithm, simulated annealing and tabu search take more time but output results closer to optimal solution. Barbulescu et al. (2004) proved that satellite range scheduling is NP complete, Marinelli et al. (2011) and Brown etal.(2018)developedanewheuristicmethodbasedonLagrangian relaxation to overcome the difficulty that large-scale variablesyield,andtheformerappliedthemethodtoGALILEO constellation. As far as we know, there exist few studies about satellite range scheduling using reinforcement learning.
+Reinforcement learning is about learning how to act to achieve a goal in an uncertain environment to maximize the reward in a particular situation, and it is a specialized application of machine learning and deep learning
+
+* Corresponding author: Bo Ren, State Key Laboratory of
+Astronautic Dynamics, Xi’an Satellite Control Center, Xi’an 710043,
+China, e-mail: renbo1313@126.com
+Zhicheng Zhu, Fan Yang, Tao Wu, Hui Yuan: State Key Laboratory of
+Astronautic Dynamics, Xi’an Satellite Control Center, Xi’an 710043,
+China
+Open Astronomy 2022; 31: 268–275
+Open Access. © 2022 Bo Ren et al., published by De Gruyter.
+This work is licensed under the Creative Commons Attribution 4.0 International
+License.
+ techniques to solve various types of decision making problems (Sutton and Barto 2019, Wiering and Otterlo 2018).
+The agent is trained to seek a new way to maximize the reword, and by interacting with the environment, a neural network storing experiences improves the performance.
+The reinforcement learning algorithms are usually classified into three types: value-based approach, policy-based approach and model-based approach. In a value-based reinforcement learning algorithm, the agent will try to maximize a value function and is expecting a long-term return of current state. In a policy-based algorithm, the agent will try to come up with such a policy that the action performed in every state improves the return in the future.
+In a model-based algorithm, a model was created in every environment and the agent learns to perform in them.
+Recently, reinforcement learning has also gained more and more attention in scheduling. Cunha et al. (2021) created a novel architecture that incorporates reinforcement learning into scheduling systems. Shyalika et al. (2020) addressed the reinforcement learning techniques used for dynamic task scheduling. Luo (2020) developed a deep Q-network to solve the dynamic job shop scheduling problem. Huang et al.
+(2021) used deep deterministic policy gradient algorithm to solve the satellite task scheduling problem. Inspired by the aforementioned applications of reinforcement learning in scheduling, solving the problem of satellite range scheduling by using reinforcement learning became feasible.
+The main contribution of this article is the proposal of an innovative high-altitude satellite range scheduling method for urgent request by adopting reinforcement learning. We utilized Q learning as the learning model, and Q learning is a value-based algorithm of providing information to inform which action an agent should take (Watkins 1989, Watkins &
+Dayan 1992). Our article is organized as follows. First, we introduce the background of the problem and several basic definitions. Section 2 is the analysis of high-altitude orbit satellites urgent request scenario. Calculation of sliding bound of request pass is described in Section 3. A novel frame of satellite range scheduling using reinforcement learning is proposed in Section 4. The simulation and discussion are presented in Section 5. Finally, we conclude this study and put forward some future ideas in Section 6.
+2 Analysis of high-altitude orbit satellite request for ground antenna
+To introduce the problem of satellite range scheduling clearly, several major definitions are listed as follows:
+1) High-altitude orbit satellite request: When a highaltitude orbit satellite need a supported service from an antenna, it will send a resource requests message to the scheduling system. The message mainly includes the least last time (LLT, minimum duration) and the request time (RT), LLT is the shortest service time that the satellite need, RT is a time scope in which the service time should be arranged. There are two types of resource requests, normal request and urgent request. The normal requests are periodic corresponding to the regular service demand, and the urgent request is temporary corresponding to the service demand in an emergency. The present article focuses on the resources scheduling for urgent request. Whenever an urgent request arrives, there was already an antenna work plan generated by the normal request scheduling process.
+2) Resources scheduling system: It is the core system in charge of antenna scheduling for normal and urgent requests, a plan of scheduled passes for all antennas would be generated after scheduling process.
+3) Antenna service switch time: It is the antenna repositioning time between adjacent service time for different satellites, and it is a constant value for all ground station antennas. The constraints of the switch time, minimum elevation, and visibility are taken into account, but they are neglected in the notations for simplicity.
+4) Scheduled pass and request pass: The scheduled passes are the components of the service plan of an antenna, it is the output of resources scheduling system. A request pass is the pass with a length, which is equal to the request LLT in the RT. All the passes must be in the satellite-antenna visible time.
+5) Service conflict: The conflict between two service time is defined by pass conflict that one pass is overlapped with the adjacent one, while the antenna service switch time must be considered.
+6) Sliding operation: In a scheduling environment, a request pass should be arranged on an antenna and then all the scheduled passes should be conflict free. We define the arrange operation as insert. When a pass insert operation causes a conflict, all the passes in the
+RT should try to move backward (to the earlier time or to the left side) or forward (to the later time or to the right side) to overcome the confliction. The move of pass on an antenna is called slide, the request pass after slide operation should be in the RT, and other pass after slide operation should be in the visible time.
+The design of urgent request data is to create an interface for interoperability between the satellite and
+High-altitude satellites range scheduling utilizing reinforcement learning
+
+
+ the scheduling system, and it specifies the service detail that may be provided by an antenna. An urgent request contains the following elements:
+– a request satellite;
+– a set of ground station antennas;
+– request time (RT);
+– least last time (LLT);
+– the type of request service.
+In the RT on an antenna belonging to the request antenna set, there may be scheduled high-altitude satellite normal/ urgent passes, or scheduled low-altitude satellite passes.
+To achieve the state of conflict free of all passes in the RT, the scheduled high-altitude satellite passes and request pass need to slide in a request-relevant time scope, and the scheduled low-altitude satellite passes cannot slide due to the relative short visible time. Let us assume that
+Req is the urgent request of satellite s and the request antenna set is
+{
+}
+=
+...
+D d d d
+,
+,
+,
+N
+
+, where N is the number of request antennas, the request time window is Wr, the
+LLT is Ws. Let W[i] denote the visible time of s on the antenna di. Figure 1 shows the urgent request scheduling scenario, and the approach to find a conflict free position for request pass is as follows:
+1) Calculate the intersection of visible time and request time, that is,
+[ ] ∩
+W i
+Wr. Subtract the switch time from the start time of intersection and the end time of intersection plus the switch time, and then we obtain the maximum request time (MRT). The difference of RT and MRT is the antenna switch time, and we use
+MRT in the following sections.
+2) Let W(LEO) denotes the scheduled low-altitude satellite passes in MRT, and we obtain the scheduled high-altitude satellite passes in MRT as
+[ ]
+=
+∩
+−
+W
+W i
+W
+W x r
+(LEO).
+3) Constraints of the process of urgent request scheduling. Wx and Req may both need to slide, and the sliding scope of the terms in Wx are determined by the corresponding original request.
+4) The satellite range scheduling. This will be further illustrated in Section 4.
+3 Calculation of the sliding upper bound
+In this section, the sliding bound of the high-altitude satellite request pass will be provided. We call upper bound of sliding operation a maximum time scope, such that in which one high-altitude satellite pass can move. The initial condition for a conflict free scheduling solution is
+≥
+≤ p llt r let
+, x x x x, where px is the visible time of request satellite on antenna d, lltx is the LLT of the urgent request t r
+, x x is the start time of px and letx is latest ending time which equal to the end time of the request. Each highaltitude satellite scheduled pass had an corresponding original request, and the parameters of the original request will be parsed for calculation of the upper sliding bound.
+For the case of sliding backward in Figure 2, sv and fv are the start time and the end time of a scheduled pass tv, respectively.
+− px 1 is the visible time of the satellite of scheduled pass
+− tx 1 at the left of tx on antenna d,
+− tx 2 and
+− tx 3 are scheduled high-altitude satellite passes and ti and
+− ti 1 are scheduled low-altitude orbit satellite passes.
+For low-altitude satellite, the whole visible time will be arranged by the scheduling system if conflict does not exist; consequently, the scheduled pass cannot slide in visible time. For scheduled passes of high-altitude satellites, the time length of sliding backward is determined by two items: one is the start time of visible window and the other is the end time of the left hand scheduled pass.
+If
+− tx 1 is a scheduled high-altitude orbit satellite pass, and there are u1 scheduled high-altitude orbit satellite passes between
+− tx 1 and the low-altitude orbit satellite scheduled passes, then the sliding upper bound of
+− tx 1 to the left side is expressed as follows:
+(
+)
+(
+(
+)
+)
+(
+)
+∑
+=
+−
+−
++
+−
+−
++
+−
+−
+−
+−
+−
+−
+=
+−
+−−
+−−
+−−
+−−
+−−
+−−
+−− f f r llt f f r llt f f r llt
+Δ max
+, max
+, max
+,
+.
+l x x x x j u x j x j x j x j x u i x u x u
+
+(1)
+For the case of sliding forward in Figure 3,
++ tx 1 and
++ tx 2 are scheduled high-altitude orbit satellite passes, and
+Ws
+W[i]
+Wr
+Wx di
+Low altitude orbit satellite pass
+Req
+Low altitude orbit satellite pass
+High altitude orbit satellite pass
+Figure 1: Example of an urgent request scheduling scenario.
+
+
+Bo Ren et al.
+ ti and
++ ti 1 are scheduled low-altitude orbit satellite passes.
++ lltx 1 is the LLT of the request of
++ tx 1 and
++ letx 1 is the latest ending time of request of
++ tx 1. For scheduled passes of high-altitude satellites, the time length of sliding forward is determined by three items: one is the end time of visible window, the second is the latest ending time, and the third is the start time of the right hand scheduled pass. The high-altitude satellite passes from the right side slide one by one, and start time of the sliding pass will be updated. If there are u2 scheduled high-altitude orbit satellite passes between
++ tx 1 and the low-altitude orbit satellite scheduled passes, then the sliding upper bound of
++ tx 1 to the right side is expressed as follows:
+(
+)
+(
+(
+)
+)
+(
+)
+∑
+=
++
+−
++
++
+−
++
++
+−
++
++
++
++
++
+=
+−
++ +
++ +
++ +
++ +
++ +
++ +
++ +
++ +
++ + r p let s f r p let s f r p let s f
+Δ min
+,
+, min
+,
+, min
+,
+,
+.
+r x x x x x j u x j x j x j x j x j x u x u x u i x u
+
+(2)
+Updated values of
++ + sx j
+1 after every slide were used in calculation of Δr in Eq. (2).
+We learn from Eqs. (1) and (2) that the length of the total time window for request pass after sliding on d is
+=
++
++
+−
++
+−
+T s f
+Δ
+Δ
+Δ
+.
+l r x x
+
+(3)
+The time length T
+Δ is the maximum idle time window on antenna d that an urgent request can be arranged. If
+T
+Δ is not longer than LLT, the corresponding request will be rejected on antenna d immediately. Consequently, scheduling process ended before reinforcement learning module.
+4 A frame of satellite range scheduling using reinforcement learning
+Scheduling strategy is the reference policy for the scheduling method and is the principle of sliding operation (Pinedo 2016, Conway et al. 2003). The strategies describe that how the request pass slide to avoid overlap. We design two scheduling strategies for high-altitude satellite urgent request, mono-layer, and multi-layer scheduling.
+– Mono-layer scheduling strategy. The request pass is only permitted to be arranged on the current antenna, the scheduled passes in the MRT of the request cannot be transferred to the other antenna belonging to the corresponding request antenna set.
+– Multi-layer scheduling strategy. The request pass can be arranged on an antenna belonging to the request antenna set, and the scheduled high-altitude satellite passes can be transferred to the any other antenna belonging to the corresponding original request antenna set.
+Compared with the mono-layer strategy, the multi-layer strategy may change the work plan of other antenna, this will bring instability to the entire plan of the network and further increase the searching space. However, the advantage of multi-layer strategy lies in providing more scheduling solutions. It can utilize various optimization techniques, such as load balancing between different antennas, user-oriented antenna preference, and overall antenna service efficiency. If the scheduling method utilizing mono-layer strategy is failed to generate a conflict free scheme, then the multi-layer strategy could be selected as the second stage of the high-altitude satellite request scheduling.
+After the discussion of scheduling strategy, we propose an overall antenna effectiveness (OAE) function to represent the benefit of different sliding operations:
+(
+(
+)
+(
+))
+∑
+=
+−
+−
+=
+O
+T
+T
+T
+T
+T
+T
+1 min
+, max
+,
+, i
+N i e i s
+
+(4) where T0 is the start time of MRT and T1 is end time of
+MRT,Ti s is the start time of request pass or scheduled pass ti ti-1 rx px-1 px letx-1 rx-1 lltx-1 d tx-1 tx-2 fx-2 fi fx-1
+Figure 2: Scheduled high-altitude orbit satellite passes slide backward.
+d letx rx-1 rx+1 px-1 px letx-1 rx lltx-1 sx+1 px+1 tx+1 tx+2 lltx+1 letx+1 fx+1 ti ti+1 letx+2
+Figure 3: Scheduled high-altitude orbit satellite passes slide forward.
+High-altitude satellites range scheduling utilizing reinforcement learning
+
+
+ ti, and Ti e is the end time of request pass or scheduled pass ti. N is the total number of passes in MRT. The OAE function will be calculated on the basis of conflict free scheduling result, that is, if the scheduling is failed, then the value of OAE will be 0. If the passes in MRT trying to occupy the time in the MRT, not out of MRT, then the OAE function may obtain a bigger value. A bigger value means a higher percentage of service time, while the antenna is online. If part of one pass is out of MRT, then the upper bound of OAE is expressed as follows:
+⎜
+⎟
+⎛
+⎝
+(
+)⎞
+⎠
+∑
+=
+−
++
++
+−
+=
+−
+O
+T
+T t t
+T
+T
+
+Δ
+Δ
+, m i
+N i e i s
+
+(5) where
+(
+)
+=
+− t
+T
+T
+Δ max e
+
+0 ,
+(
+)
+=
+− t
+T
+T
+Δ max
+N s
+
+, If all the passes are perfectly in the MRT, then the value of OAE will be a constant:
+⎜
+⎟
+⎛
+⎝
+(
+)⎞
+⎠
+∑
+=
+−
+−
+=
+O
+T
+T
+T
+T
+
+.
+c i
+N i e i s
+
+(6)
+From Eqs. (5) and (6), we find that the value of OAE ranges from Oc to Om for a conflict free scheme.
+The new satellite range scheduling frame for urgent request of high-altitude orbit satellites begins from some main components of reinforcement learning. The details are as follows:
+– Agent: There are two types of time windows, LLT and
+MRT in high-altitude satellite request. These two terms are regarded as entities, which slide forward or backward on an antenna in the scheduling environment.
+– Action: The action of the agents is sliding from one state to another, which means that the agent can stay still, move forward, or backward on the antenna, and the time scope of sliding operation is limited.
+– Environment: In a scheduling scenario, there would be one ground station antenna or several antennas, one high-altitude satellite request, and scheduled passes in the request-relevant MRT. To achieve the objective that all the scheduled passes are conflict free after sliding actions, the agents need to slide according to the value of reward. The state of agents will be updated after each sliding. The direction and magnitude of the sliding are the key factors of each action.
+– State: The state of the scheduling environment consists of the start time and the end time of each time window on the corresponding antenna, and the result of the value function at the end of the sliding action.
+– Value function: We use overall antenna effectiveness as value function, it is a measure of how well a scheduling operation is utilized in the MRT, compared to full potential of an antenna during the visible time window. It specifies the value of a state, and the agents should be expected maximizing the overall antenna effectiveness in the MRT on an antenna for a highaltitude satellite request. If clashes between two passes are detected, then the value of OAE will be 0.
+In Figure 4, we design an architecture to illustrate the scheduling mechanism that employs reinforcement learning techniques. When a new urgent request arrives, visible time, antennas, RT, and LLT will be parsed from request. Mono-layer scheduling strategy is selected if single antenna was requested. Then sliding upper bound is adopted as a basic filter for the following process, which was described at the end of Section 3. Useroriented design of value function makes this frame flexible for various situations, and current design comes from the perspective of service provider. This scheduling frame works as a loop according to the requested antennas, and the process continues with next antenna if the previous antenna failed to output a conflict free window.
+Urgent request of high altitude orbit satellites
+Calculation of sliding upper bound
+Scheduled passes in MRT
+Agents of request pass and scheduled passes
+Sliding constraints
+Strategies selection
+Value function design
+Scheduling utilizing Q learning
+Conflict-free ?
+Scheduling result output
+Yes
+No
+Antenna set in request
+Visible time
+RT and LLT
+Figure 4: Scheduling procedure utilizing reinforcement learning.
+
+
+Bo Ren et al.
+
+The scheduling frame breaks out of the loop if a valid result is generated. Two major factors are considered in the real circumstance of satellite range scheduling: the quality of the scheduling result and the time consumed to obtain it. Both the scheduling strategy and the value function of reinforcement learning will react on the objective.
+The proposed frame of scheduling is not to generate the best solution, but a result good enough that is obtained by an intelligent scheduling system using reinforcement learning.
+5 Simulation
+The simulation is implemented in a real operational context, 30 ground station antennas, 250 satellites including
+30 high-altitude orbit satellites, and a plan of scheduled passes for normal requests with a period of 7 days was involved. The data environment for mono-layer strategy scheduling is presented in Table 1, where s_3 represents a low-altitude orbit satellite, other satellites are high-altitude orbit satellites. For high-altitude orbit satellite’s pass in MRT of s_1, it has an original request that is listed in its second line. The antenna service switch time is considered in the start time and end time in Table 1, where “Sat” represents a satellite or a satellite pass,
+“ST” represents the start time of the pass, “ET” represents the end time of the pass, “Type” means that the pass of line is a high-altitude orbit satellite scheduled/request pass or a low-altitude orbit satellite pass. The MRT of urgent request of s_1 is from 13:49:00UTC to 16:39:20UTC.
+We apply Q learning to the scheduling for urgent request of s_1. The pass of s_3 cannot slide, the reinforcement learning parameters are as follows: initial pass position of s_1 is 13:55:12UTC-14:10:12UTC, learning rate is 0.001, and slide step is 3 s. Figure 5 shows the variation of OAE for different values of training times.
+We find from Figure 5 that the maximum value of
+OAE is 0.632 (the corresponding scheduled result for s_5 is 16:31:09UTC-20:17:49UTC) and lies in the range of
+=
+O
+0.582 c and
+=
+O
+0.63296 m
+(the corresponding theoretical position for s_5 is 16:30:58UTC-20:18:58UTC).
+The data environment for multi-layer strategy scheduling is presented in Tables 2 and 3. The request pass and scheduled passes in the MRT of s_1 on the first preferred antenna d_1 are listed in Table 2, The scheduled passes in the MRT of s_2 on the first preferred antenna d_2 except d_1 are listed in Table 3. Five agents are request of s_1, scheduled passes s_2, s_7, s_8, and s_9, learning rate is 0.001, and slide step is 3 s. The training result is shown in Figure 6, due to the failure in the first stage of mono-layer strategy scheduling, s_2 was transferred to d_2 and the multi-layer strategy is implemented.
+Table 1: Data environment for mono-layer strategy simulation
+Sat
+ST/UTC
+ET/UTC
+LLT/second
+Type s_1
+13:55:00
+16:33:20
+
+Urgent request s_2
+13:55:12
+14:10:12
+
+Scheduled pass s_2
+13:55:00
+16:33:20
+
+Original request s_3
+14:31:19
+14:41:28
+—
+Low altitude s_4
+14:58:36
+15:54:06
+3,330
+Scheduled pass s_4
+14:58:30
+16:21:46
+3,330
+Original request s_5
+16:35:33
+20:22:13
+13,600
+Scheduled pass s_5
+16:11:40
+20:50:35
+13,600
+Original request
+Figure 5: Variation of OAE for different values of training times with mono-layer strategy.
+Table 2: Data environment for multi-layer strategy simulation on d_1
+Sat
+ST/UTC
+ET/UTC
+LLT/second
+Type s_1
+13:55:00
+15:50:00
+
+Urgent request s_2
+13:45:00
+14:00:00
+
+Scheduled pass s_2
+12:00:00
+14:00:00
+
+Original request s_3
+14:08:57
+14:28:57
+1,200
+Scheduled pass s_3
+08:59:57
+14:57:30
+1,200
+Original request s_4
+14:50:58
+15:10:58
+1,200
+Scheduled pass s_4
+14:43:58
+17:54:49
+1,200
+Original request s_5
+15:17:00
+15:32:00
+
+Scheduled pass s_5
+14:36:00
+16:31:00
+
+Original request s_6
+15:38:12
+15:53:12
+
+Scheduled pass s_6
+14:55:00
+16:50:00
+
+Original request
+High-altitude satellites range scheduling utilizing reinforcement learning
+
+
+Then the value of OAE equal to
+=
+O
+0.434 c after the successful slide of s_2, s_8, and s_9 on d_2.
+In the experiment with a more larger scale, for example, there are more than 15 high-altitude orbit satellite passes in one MRT, it is difficult to have a good control on the search.
+An additional high-altitude scheduled pass in MRT can lead to a slightly drawback in run time. On the contrary, a lowaltitude scheduled pass in MRT instead of high-altitude pass can result in a similar OAE. Improving the overall performance of the method on large-scale scenario will be an important research topic in the future.
+6 Conclusion
+This article demonstrates how reinforcement learning can be used in high-altitude satellites range scheduling for urgent request. In the frame of our implementation, calculation of pass sliding bound and overall antenna effectiveness was introduced, Q learning was utilized as the learning model. Two kinds of scheduling strategies make our novel approach feasible to be extended to any other user-oriented scheduling method. The trained model can directly generate a scheduling result without retraining a new instance. Although not considered in our article, the proposed method can easily incorporate urgent request scheduling for request from low-altitude satellites.
+Numerical experiments are conducted on a large-scale of practical context, and results of simulations prove that the proposed method is feasible.
+Funding information: This work was supported by the
+National Natural Science Foundation of China (Grant
+No. U21B2050).
+Author contributions: All authors have accepted responsibility for the entire content of this manuscript and approved its submission.
+Conflict of interest: The authors state no conflict of interest.

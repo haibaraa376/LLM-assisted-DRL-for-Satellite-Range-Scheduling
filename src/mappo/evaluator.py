@@ -1,4 +1,4 @@
-"""提供固定validation场景的确定性MAPPO评估与Best选择规则。"""
+"""提供隔离协议上的确定性MAPPO评估和完整业务指标。"""
 
 import math
 
@@ -6,62 +6,80 @@ import numpy as np
 import torch
 
 from .encoding import decode_composite_action
+from .evaluation_protocol import (
+    public_protocol_metadata,
+    sample_protocol_task_ids,
+)
+from .model_selection import is_better_validation_result as _central_is_better
+
+
+def is_better_validation_result(candidate, incumbent, rule=None):
+    """兼容旧调用的公开包装；正式选择仍委托集中规则实现。"""
+    if isinstance(rule, (int, float)) and not isinstance(rule, bool):
+        rule = (
+            ("timeliness_raw_mean", "max", float(rule)),
+            ("load_balance_mean_per_task_mean", "max", 0.0),
+        )
+    return _central_is_better(candidate, incumbent, rule)
 
 
 _AGGREGATE_METRICS = (
     "timeliness_raw",
+    "delivered_timeliness_raw",
+    "load_balance_raw",
     "load_balance_mean_per_task",
+    "mean_utilization_std",
     "completed_task_count",
     "expired_task_count",
+    "active_task_count",
     "delivered_data_mbit",
     "accepted_subaction_count",
     "rejected_subaction_count",
+    "accepted_isl_count",
+    "accepted_idl_count",
+    "accepted_sgl_count",
+    "completion_rate",
+    "expiration_rate",
+    "rejected_subaction_rate",
+    "sgl_action_fraction",
 )
 
 
-def is_better_validation_result(candidate, incumbent, primary_tolerance):
-    """按及时性主指标和负载均衡次指标判断候选是否更优。"""
-    if primary_tolerance < 0 or not math.isfinite(primary_tolerance):
-        raise ValueError("Best模型主指标容差必须是非负有限数")
-    primary = float(candidate["timeliness_raw_mean"])
-    secondary = float(candidate["load_balance_mean_per_task_mean"])
-    if not math.isfinite(primary) or not math.isfinite(secondary):
-        raise ValueError("候选validation指标包含NaN或Inf")
-    if incumbent is None:
-        return True
-    incumbent_primary = float(incumbent["timeliness_raw_mean"])
-    incumbent_secondary = float(
-        incumbent["load_balance_mean_per_task_mean"]
-    )
-    if not math.isfinite(incumbent_primary) or not math.isfinite(
-        incumbent_secondary
-    ):
-        raise ValueError("已有Best validation指标包含NaN或Inf")
-    difference = primary - incumbent_primary
-    if difference > primary_tolerance:
-        return True
-    if difference < -primary_tolerance:
-        return False
-    return secondary > incumbent_secondary
-
-
 class MappoEvaluator:
-    """在固定validation任务上运行确定性完整Episode，不执行梯度更新。"""
+    """在固定任务协议上运行确定性完整Episode，不执行梯度更新。"""
 
     def __init__(self, environment, encoder, actor, device):
-        """保存环境、编码器、共享Actor和推理设备，不重置任何状态。"""
         self.environment = environment
         self.encoder = encoder
         self.actor = actor
         self.device = torch.device(device)
 
-    def evaluate(self, seeds, task_count, max_steps=None):
-        """评估多个互异validation seed并返回逐场景与聚合原始指标。"""
-        seeds = list(seeds)
+    def evaluate(
+        self,
+        seeds=None,
+        task_count=None,
+        max_steps=None,
+        protocol=None,
+    ):
+        """返回逐场景、聚合指标和协议审计信息。
+
+        ``seeds/task_count`` 只为历史调用兼容；正式基线必须传入protocol。
+        """
+        if protocol is not None:
+            seeds = list(protocol["seeds"])
+            task_count = int(protocol["task_count"])
+        else:
+            seeds = list(seeds or ())
+            task_count = int(task_count or 0)
         if not seeds or len(seeds) != len(set(seeds)):
-            raise ValueError("validation seeds必须非空且互不重复")
-        if not 0 < task_count <= 150:
-            raise ValueError("validation任务数必须位于1到150")
+            raise ValueError("评估seeds必须非空且互不重复")
+        maximum = (
+            len(protocol["pool_task_ids"])
+            if protocol is not None
+            else len(self.environment.task_splits["validation"])
+        )
+        if not 0 < task_count <= maximum:
+            raise ValueError("评估任务数超出任务池范围")
         if max_steps is not None and max_steps <= 0:
             raise ValueError("评估最大步数必须为正数")
         was_training = self.actor.training
@@ -71,7 +89,12 @@ class MappoEvaluator:
             with torch.no_grad():
                 for seed in seeds:
                     scenarios.append(
-                        self._evaluate_scenario(seed, task_count, max_steps)
+                        self._evaluate_scenario(
+                            int(seed),
+                            task_count,
+                            max_steps,
+                            protocol,
+                        )
                     )
         finally:
             self.actor.train(was_training)
@@ -86,16 +109,31 @@ class MappoEvaluator:
             aggregate[metric + "_min"] = float(values.min())
             aggregate[metric + "_max"] = float(values.max())
         if not all(math.isfinite(value) for value in aggregate.values()):
-            raise RuntimeError("validation聚合指标包含NaN或Inf")
-        return {"scenarios": scenarios, "aggregate": aggregate}
+            raise RuntimeError("评估聚合指标包含NaN或Inf")
+        passed = all(item["data_conservation_passed"] for item in scenarios)
+        result = {
+            "scenarios": scenarios,
+            "aggregate": aggregate,
+            "all_scenarios_data_conservation_passed": passed,
+        }
+        if protocol is not None:
+            result["protocol"] = public_protocol_metadata(protocol)
+        return result
 
-    def _evaluate_scenario(self, seed, task_count, max_steps):
-        """运行一个validation场景，默认走完2880个决策步。"""
-        observations, reset_info = self.environment.reset(
-            seed=int(seed),
-            split="validation",
-            task_count=int(task_count),
-        )
+    def _evaluate_scenario(self, seed, task_count, max_steps, protocol):
+        """运行单个场景；协议模式显式注入任务ID以避免跨池污染。"""
+        if protocol is None:
+            observations, reset_info = self.environment.reset(
+                seed=seed,
+                split="validation",
+                task_count=task_count,
+            )
+        else:
+            selected_ids = sample_protocol_task_ids(protocol, seed)
+            observations, reset_info = self.environment.reset(
+                seed=seed,
+                task_ids=selected_ids,
+            )
         totals = {
             "accepted_subaction_count": 0,
             "rejected_subaction_count": 0,
@@ -144,12 +182,21 @@ class MappoEvaluator:
             steps += 1
             if max_steps is not None and steps >= max_steps:
                 break
+        if final_info is None:
+            raise RuntimeError("评估场景没有产生环境step")
         self.environment.check_data_conservation()
+        accepted = totals["accepted_subaction_count"]
+        rejected = totals["rejected_subaction_count"]
+        attempted = accepted + rejected
         result = {
-            "seed": int(seed),
+            "seed": seed,
             "selected_task_ids": list(reset_info["selected_task_ids"]),
             "environment_steps": steps,
+            "full_episode": bool(self.environment.terminated),
             "timeliness_raw": float(final_info["timeliness_raw"]),
+            "delivered_timeliness_raw": float(
+                final_info["delivered_timeliness_raw"]
+            ),
             "load_balance_raw": float(final_info["load_balance_raw"]),
             "load_balance_mean_per_task": float(
                 final_info["load_balance_mean_per_task"]
@@ -157,15 +204,24 @@ class MappoEvaluator:
             "mean_utilization_std": float(final_info["mean_utilization_std"]),
             "completed_task_count": int(final_info["completed_task_count"]),
             "expired_task_count": int(final_info["expired_task_count"]),
+            "active_task_count": int(final_info["active_task_count"]),
             "delivered_data_mbit": float(final_info["delivered_data_mbit"]),
             **totals,
+            "completion_rate": final_info["completed_task_count"] / task_count,
+            "expiration_rate": final_info["expired_task_count"] / task_count,
+            "rejected_subaction_rate": rejected / max(attempted, 1),
+            "sgl_action_fraction": totals["accepted_sgl_count"] / max(accepted, 1),
             "data_conservation_passed": True,
         }
         numeric = [
             value
             for key, value in result.items()
-            if key not in {"selected_task_ids", "data_conservation_passed"}
+            if key not in {
+                "selected_task_ids",
+                "data_conservation_passed",
+                "full_episode",
+            }
         ]
         if not all(math.isfinite(value) for value in numeric):
-            raise RuntimeError("validation场景指标包含NaN或Inf")
+            raise RuntimeError("评估场景指标包含NaN或Inf")
         return result

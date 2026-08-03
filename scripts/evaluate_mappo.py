@@ -4,10 +4,12 @@ import argparse
 import json
 from pathlib import Path
 
+from baselines.config import load_baseline_config
 from mappo.checkpoint import load_checkpoint
 from mappo.config import load_mappo_config, resolve_device, validate_mappo_config
 from mappo.encoding import MappoObservationEncoder
 from mappo.evaluator import MappoEvaluator
+from mappo.evaluation_protocol import build_evaluation_protocol
 from mappo.networks import CentralizedCritic, SharedActor
 from mappo.utils import set_global_seed
 from srs_env.config import load_environment_config
@@ -21,24 +23,26 @@ def parse_args():
     parser = argparse.ArgumentParser(description="评估人工奖励MAPPO")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--config", default="configs/mappo.yaml")
-    parser.add_argument("--split", default="validation")
-    parser.add_argument("--seeds", nargs="+", type=int)
-    parser.add_argument("--task-count", type=int)
+    parser.add_argument("--baseline-config", default="configs/baselines.yaml")
+    parser.add_argument(
+        "--protocol",
+        choices=("checkpoint_selection", "test"),
+        default="checkpoint_selection",
+    )
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"))
     parser.add_argument(
         "--output",
-        default="results/day3/manual_reward_mappo/evaluation.json",
+        default=None,
     )
     parser.add_argument("--max-steps", type=int)
     return parser.parse_args()
 
 
 def main():
-    """拒绝test划分，加载模型并输出validation逐场景及聚合指标。"""
+    """加载模型并按显式隔离协议输出逐场景及聚合指标。"""
     args = parse_args()
-    if args.split != "validation":
-        raise ValueError("第三天独立评估只允许validation，test保留给最终实验")
     config = load_mappo_config(args.config)
+    baseline_config = load_baseline_config(args.baseline_config)
     if args.device:
         config["device"] = args.device
     validate_mappo_config(config)
@@ -61,13 +65,24 @@ def main():
         expected_encoder_metadata=encoder.metadata(),
         map_location=device,
     )
-    validation = config["manual_training"]["validation"]
-    result = MappoEvaluator(environment, encoder, actor, device).evaluate(
-        args.seeds or validation["seeds"],
-        args.task_count or validation["task_count"],
-        max_steps=args.max_steps,
+    protocol = build_evaluation_protocol(
+        args.protocol,
+        baseline_config["evaluation_protocols"],
+        environment.task_splits,
     )
-    output = Path(args.output)
+    result = MappoEvaluator(environment, encoder, actor, device).evaluate(
+        max_steps=args.max_steps,
+        protocol=protocol,
+    )
+    default_name = (
+        "test_evaluation.json"
+        if args.protocol == "test"
+        else "evaluation.json"
+    )
+    output = Path(
+        args.output
+        or Path("results/day3/manual_reward_mappo") / default_name
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(result, ensure_ascii=False, indent=2),

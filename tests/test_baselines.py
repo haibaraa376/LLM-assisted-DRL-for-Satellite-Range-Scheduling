@@ -205,7 +205,7 @@ def test_11_potential_formula(configs):
     environment = _dummy_environment()
     config = configs[0]["methods"]["ppo_lya"]["lyapunov"]
     features = extract_lyapunov_features(environment, config)
-    assert lyapunov_potential(features, config["feature_weights"]) == pytest.approx(0.5)
+    assert lyapunov_potential(features, config["feature_weights"]) == pytest.approx(0.45)
 
 
 def test_12_state_improvement_shaping_positive(configs):

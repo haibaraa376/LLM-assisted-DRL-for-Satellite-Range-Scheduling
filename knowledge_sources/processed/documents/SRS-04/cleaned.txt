@@ -1,0 +1,788 @@
+Learning-guided nondominated sorting genetic algorithm II for multi-objective satellite range scheduling problem
+Yan-Jie Song a, Xin Ma a, Xun-Jia Li a, Li-Ning Xing a,*, Pei Wang b a College of Systems Engineering, National University of Defense Technology, Changsha, 410073, Hunan, China b Unit 75831, Guangzhou, 510510, Guangdong, China
+A R T I C L E I N F O
+Keywords:
+Learning-guided
+Multi-objective
+NSGA-II
+Satellite range scheduling
+Evolutionary
+Algorithm
+A B S T R A C T
+Satellite range scheduling is an important issue in the field of satellite mission planning, which greatly affects the development of satellite industry. This paper analyzed satellite range scheduling problem, constructed a multiobjective SRSP (MO-SRSP) model and proposed an improved multi-objective evolutionary algorithm (MOEA), called learning-guided nondominated sorting genetic algorithm II (LGNSGAII) that contains a learning mechanism. Learning mechanisms can speed up optimization process. Meanwhile, another algorithm called task-time window selection algorithm (TTSA) is also proposed. Specifically, it can select satellite ground stations time windows for tasks. TTSA includes three location selection methods and two location movement methods, both are used to select the appropriate execution location for tasks. Experiments show that the proposed algorithm can solve MO-SRSP better than several comparison algorithms. In other words, this algorithm we proposed has a broad practical application prospect.
+1. Introduction
+Satellites meet military and civilian mission requirements by providing a variety of services, such as environmental monitoring, disaster prediction, satellite navigation. Daily service of satellites relies on the communication between satellite ground stations and satellites.
+This communication process with satellite ground station is called satellite range, or satellite measurement and control. In this paper, an optimization problem, which is also known as Satellite TT&C scheduling problem, is named satellite range scheduling problem. In SRSP, the goal that match many satellite resources with measurement and control resources, and select appropriate measurement and control tasks to complete, is the key to ensure normal operation and successful completion of various missions. Using satellite resources efficiently is of great significance for the development of satellite industry and for humanity.
+SRSP is to select appropriate location and time for satellites’ communication with ground stations. More generally, it needs to determine the time for satellites communicating with ground stations.
+Communication between satellite and station must be carried out at a position where two antennas are visible to each other. This time interval is called ground station visible time window. Satellite measurement and control tasks must be done within the range of visible time windows of ground stations. Numerous measurement and control requirements combined with the limited resources of ground stations make SRSP hard to solve, thus followed by oversubscribed scheduling problem. Meanwhile, SRSP has limitations on technology and equipment. These constraints increase the complexity of this problem. Although this problem can be solved by an exact solution algorithm in the case of small-scale tasks, it is difficult to obtain a feasible solution in a limited time once the task scale is increased. In contrast, evolutionary algorithms are more suitable to solve SRSP.
+Satellite range scheduling problem has always been an important focus in the field of satellite mission planning. This problem is similar to vehicle routing problem with time windows (VRPTW) [31]. However,
+MO-SRSP will cause tasks to fail due to high resources of the mission relative to ground stations. And there is no problem of vehicle movement in this problem, but the choice of time window resources. Due to different backgrounds of problem, our problem and model are more complicated than VRPTW problem. Dynamic optimization process of some complex systems is also useful for reference [24,25]. This problem has two major characteristics, one is oversubscribed scheduling, the other is that the problem belongs to a NP-Hard problem, and these two points have been confirmed by the research [1,2]. Oversubscribed scheduling means that the number of tasks that need to be planned
+* Corresponding author.
+E-mail addresses: songyj_2017@163.com (Y.-J. Song), zeroalbert1995@163.com (X. Ma), lixunjia13@nudt.edu.cn (X.-J. Li), xinglining@gmail.com (L.-N. Xing), peigongliu@hotmail.com (P. Wang).
+Contents lists available at ScienceDirect
+Swarm and Evolutionary Computation journal homepage: www.elsevier.com/locate/swevo https://doi.org/10.1016/j.swevo.2019.06.008
+Received 10 March 2019; Received in revised form 23 June 2019; Accepted 23 June 2019
+Available online 26 June 2019
+2210-6502/© 2019 Elsevier B.V. All rights reserved.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+ exceeds the maximum number that the system can complete, and there will be a failure of some tasks. This problem not only has theoretical research significance but also is a complex practical engineering problem. Satellite measurement and control scheduling research conducted by AFSCN is an early and relatively complete study, which considers low-orbit satellite range scheduling and high-orbit satellite range scheduling [3,4]. In the research of SRSP scheduling algorithm, most of the research focuses on single-objective optimization algorithm, while only a small part of the research focuses on multi-objective optimization algorithm. Related research involving single-objective optimization algorithms is reflected in both exact solution algorithm and heuristic algorithm [3,5–7]. Exact solution algorithm can get good results in small-scale test scenarios, but it is very difficult to get results in large-scale scenarios [8]. As for heuristic algorithm, both heuristic-based optimization algorithm and meta-heuristic algorithm can cope with large-scale scenarios well [9–11]. [12] proposed a tabu search method to solve the problem of satellite measurement and control mission planning.
+Simulated annealing algorithms and genetic algorithm have also been used to solve this problem [13]. In particular, genetic algorithm has been proven to have a good solution [14,15]. [26] attempted to transform the satellite measurement and control scheduling problem into a graph coloring problem, and a reasonable scheduling scheme was obtained by using the graph coloring method. Satellite data downlink mission planning problems have strong similarities with satellite range scheduling problem [27] considered the impact of task execution time on optimization objectives, the sooner a task is completed, the higher benefit will be. Authors proposed a variety of optimization strategies that not only solve problems raised in the article, but also have strong applicability to potential new constraints [28] modeled satellite range scheduling problem from the perspective of satellite ground stations, and designing a simulated annealing algorithm to solve this problem [29] proposed a new ant colony algorithm to solve the problem by simulating the ant motion.
+From the existing research on satellite range scheduling problem, it can be seen that this problem is similar to other satellites area problems, such as imaging satellite mission planning problem [30]. Models given by different researchers are quite different, and data used in experiments is also set by themselves. Only public data set today is AFSCN (2005), which can be obtained through the website: http://www.cs.colostate.
+edu/sched/data.html. This data set is rarely used in research today because the scale of tasks is small, and the simplification of data set for actual scenes has little guiding significance for the application.
+Methods used by the researchers can be divided into exact solution algorithms and approximate solution algorithms. As measurement and control tasks increase rapidly under conditions of increasing measurement and control resources, research on exact solution algorithms in recent years is rare. An important reason is that the algorithm fails to achieve good results in a short time in a large-scale task scenario.
+Approximate solution algorithm can be mainly divided into three categories, a heuristic algorithm using rules, evolutionary optimization algorithm and the above two hybrid algorithms. Hybrid algorithms take into account advantages of the first two algorithms and overcomes shortcomings of using an algorithm alone, which can achieve good planning results in large-scale task scenarios.
+Multi-objective optimization algorithm to solve multi-objective SRSP
+(MO-SRSP) research is few and this area need further study [16] proposed a multi-objective heuristic neighborhood search algorithm to solve satellite observation mission planning problems [17] took the Chinese navigation satellite system as the research object, and proposed an evolutionary multi-objective algorithm [18] proposed a novel imaging scheduling algorithm of multi-objective optimization for multi-satellite
+(MOO-MS) to solve multiple imaging satellite scheduling problems
+[19] analyzed the electronic reconnaissance satellites scheduling problem (ERSSP), established a model and proposed a Monte Carlo simulation based multi-objective extremal optimization (MCSBMOEO) algorithm.
+Existing research that uses multi-objective optimization algorithm to solve SRSP is still little, and single-objective optimization algorithm can only solve the problem from the perspective of task profit or task completion, which is not comprehensive enough compared to multiobjective algorithm. This research focus on constructing a multiobjective mathematical model and proposing a multi-objective solving algorithm.
+Contributions of this paper include: (1) A mathematical model of multi-objective SRSP, proposing hypothesis conditions, objective function and constraints is constructed; (2) A learning-guided NSGA-II algorithm (LGNSGAII) based on multi-objective optimization algorithm is proposed; (3) A heuristic algorithm for task selection time window is given; (4) Feasibility and efficiency of the proposed algorithm are proved by simulation experiments.
+The structure of this paper is as follows. In the second part, SRSP will be introduced and a multi-objective SRSP (MO-SRSP) will be proposed.
+For MO-SRSP, a specific solution algorithm will be given in the third part.
+Planning effect of the algorithm will be tested in the fourth part. In the final section, some findings and prospects will be discussed.
+2. Problem definition and mathematical model
+2.1. Description of SRSP
+Satellite ground station completes the process of monitoring satellites’ status through measurement and control and uploads mission instructions for satellites. Satellite range scheduling allows satellites to operate well in orbit and complete mission requests. Firstly, we take two satellites and one satellite ground station as an example. One of the two satellites is a low-orbit satellite and the other is a high-orbit satellite.
+Each of the two satellites needs to complete a measurement and control task. As shown in Fig. 1, the low-orbit satellite has a shorter time window due to the lower altitude of flight orbit, while the available time window for the high-orbit satellite measurement and control tasks is longer. When
+LEO1 and GEO1 in the figure pass through the same satellite ground station one by one, it is necessary to select an appropriate execution time for measurement and control tasks of these two satellites, so that both measurement and control tasks can be performed as successful as possible.
+During a certain measurement and control cycle, there are many available time windows for ground stations that can be used for measurement and control opportunities. Each measurement and control task request must be made within the visible time window of the ground station. When a task occupies part or all of a ground station time window position, other tasks will no longer be able to select this time window position. At the same time, since measurement and control tasks need to be carried out within a certain time range, the position of the ground station time window available for each measurement and control task is limited. In addition, the ground station antenna needs to match with the satellite antenna to execute the measurement and control tasks. That is to say, the ground station needs to rotate the antenna to a certain angle after performing a task before the next measurement and control task can be performed.
+2.2. Mathematical model for multi-objective SRSP (MO-SRSP)
+Given two sets Task and Timewindow, respectively represent the set of measurement and control tasks and the set of ground station time windows. There are L satellites in the measurement and control tasks set, and the i-th satellite has Mi tasks, and there are a total of O tasks. For each measurement task taski;j, i and j represent the i-th satellite and the j-th task, respectively. Each of tasks has a time range attribute 1⁄2esti;j; leti;j, where esti;j indicates the earliest time at which the task can be started, and leti;j indicates that the task should be completed no later than the
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ latest time. Each measurement and control task also has an attribute of task time length leni;j, and each measurement and control task needs to meet the length of time before it can be considered as successful execution. In addition, task also has a value attribute, which is called “profit”, represented by pi;j. Task profit is related to many factors such as the importance of task and the length of task. There are a total of Q available time windows in the ground station time window set. For the k-th available time window, there is also a time range attribute 1⁄2Etk; Ltk.
+Among them, Etk indicates the earliest visible time of a satellite ground station, and Ltk indicates the latest visible time of a satellite ground station. Each measurement and control task should be carried out within the visible time range of satellite ground stations. Tasks are independent of each other. When one task occupies time window resources, another task cannot use this available time window and needs to wait for a certain time. This process is called task switching. In the process of switching among different measurement and control tasks, satellite ground station antennas need to be rotated, which is defined as the task conversion time
+δ. Start time of the latter task cannot be earlier than the time when antenna rotation can perform the next task.
+Multi-objective SRSP has two decision variables. One is xi;j, indicating whether the j-th task of the i-th satellite is executed. If the measurement and control task can be performed, xi;j is 1, otherwise, xi;j is 0. Another decision variable is si;j, which indicates the start execution time of the j-th task of the i-th satellite. After deciding the execution of each measurement and control task and the time of the task, an execution plan of task sequence can be obtained, and specific execution planning of each task in the measurement and control task set is included in the solution.
+In order to transform SRSP problem from a complex engineering problem into a scientific problem that facilitates the construction of mathematical models. The following assumptions are required:
+1. Only consider satellite measurement and control problems, other imaging observation and data downlink processes will not affect the measurement and control;
+2. All devices are in normal operation, and the failure of the measurement and control tasks caused by factors such as equipment operation failures is not considered;
+3. Once a measurement and control task begins, it will not be allowed to end halfway;
+4. After a task starts, it cannot be preempted by other tasks;
+5. Ignoring the time required for satellite and satellite ground stations to construct communication links, only considering the planning and scheduling process;
+6. Satellite power can support the needs of measurement and control tasks;
+7. Rotation of the antenna requires a certain conversion time, which cannot be ignored.
+Multi-objective SRSP (MO-SRSP) reference the literature [14,15,21] optimization objectives, mainly include two optimization objectives: (1) overall profit of the task sequence; (2) task failure rate in the task sequence. For the first optimization goal, the maximum profit of the task sequence should be achieved. For the second optimization goal, if it has the fewer failed tasks in the task sequence, the smaller the task failure rates it will be. So far, we can build its mathematical model based on the above description of MO-SRSP.
+Objective function:
+FðxÞ 1⁄4 1⁄2f1ðxÞ; f2ðxÞ
+(1) f1ðxÞ 1⁄4 max
+X
+L i
+X
+Mi j pi;jxi;jði 2 L; j 2 MiÞ
+(2) f2ðxÞ 1⁄4 min
+
+1 
+X
+L i
+X
+Mi j xi;j
+O
+
+ði 2 L; j 2 MiÞ
+(3)
+Constraints:
+Etk  si;j  Ltk
+(4)
+Etk  si;j þ leni;j  Ltk
+(5) esti;j  si;j  leti;j
+(6) esti;j  si;j þ leni;j  leti;j
+(7) xi;j  1
+(8) si;j þ leni;j  si;jþ1  δ
+(9)
+Fig. 1. Schematic diagram of satellite measurement and control.
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ si;j þ leni;j  siþ1;1  δ
+(10) where, Eqs. (2) and (3) respectively represent overall profit maximization of task sequence and the minimization of task failure rate. Eqs. (4)–(7) shows the relationship between tasks and time windows of ground stations. Eq. (4) indicates that a task needs to start within an available time window of a ground station. Eq. (5) indicates that a task needs to end within an available time window of a ground station. Eq. (6) indicates that the task needs to start within the time range in which the task can be executed. Eq. (7) indicates that the task needs to end within the time range in which the task can be executed. Eq. (8) means that each task can only be executed at most once. Eqs. (9) and (10) indicate that the time required for antenna rotation must be met between two measurement and control tasks. Difficulties of this problem lies in the diversity of combining satellite measurement and control tasks and multiple ground station time windows, and the numerous constraints make it almost impossible to get the optimal solution. It is also difficult to obtain feasible solutions in many cases. In summary, difficulties of the problem comes from the occupation of time windows by tasks, hardware requirements and technical requirements involved in satellite measurement and control process. Numerous restrictions make planning difficult, and each task must be able to meet all constraints at the same time to join the execution plan.
+3. Method
+To solve multi-objective SRSP (MO-SRSP), we gave two algorithms, one is learning-guided NSGA-II (LGNSGAII) and the other is task-time window selection algorithm (TTSA). LGNSGAII is used to continuously generate new solutions and improve the performance of task scheduling.
+TTSA is used to determine whether a task is executed, and the execution time of the task. LGNSGAII will be introduced in Section 3.1. After that, an introduction to TTSA will be given in Section 3.2.
+3.1. Learning-guided NSGA-II (LGNSGAII)
+3.1.1. Overall flow of the algorithm
+Learning-guided NSGA-II (LGNSGAII) is based on the classical NSGAII algorithm in multi-objective optimization algorithm and is adapted to multi-objective SRSP (MO-SRSP) [33,35]. Learning mechanism is introduced so that the algorithm can be optimized selectively. LGNSGAII is first initialized to get the initial population. Evolutionary search can optimize population and produce offspring population, which is called genetic operation, including selection, crossover, mutation, and so on.
+The number of individuals within the population determined whether the elite individuals in the population are selected by non-dominated sorting and crowding distance sorting, and individual size of population is fixed at a stable number. An evolutionary search is then performed to obtain a new generation of populations that are merged with the previous generation's population for a new cyclical process. Flow chart of
+LGNSGAII is shown in Fig. 2.
+Before genetic operation, learning mechanism obtains the conflict rate of task sequence, and automatically adjusts the weight of conflict rate by using individual's performance. Both learning mechanism and selection mechanism correspond to an individual. It can improve the task selection of genetic operation a lot. In this way, the optimization process can be made to have a definite purpose, so that the task sequence proceeds in the direction in which the task conflict is reduced. The learning mechanism has a complexity of OðnÞ.
+In order to adjust to the learning mechanism and problem, we gave two crossover operators and two mutation operators. These operators are matched to MO-SRSP. Crossover and mutation make task sequence not fall into local optimum. Key steps in the specific LGNSGAII, genetic operation and learning mechanisms will be described in the following sections. The pseudo code of LGNSGAII is shown in Table of the algorithm.
+Algorithm 1: Learning-Guided NSGA-II (LGNSGAII)
+INPUT: Task sequence length O, Population size N, Crossover probability pc, Mutation probability pm, Evolutionary generation Genmax, Number of fragments P
+OUTPUT: Solution S
+Set gen 1⁄4 1
+//Record the current evolutionary generation
+Ω ←Initial population generation
+Calculation fitness (Ω)
+While gen < Genmax
+Use Learning mechanism
+Selection in (Ω, P)
+Ω' ←Crossover operation//Use method C1 or C2
+Ω' ←Mutation operation//Use method M1 or M2
+Calculation fitness (Ω')
+Non-dominated sorting (Ω, Ω')
+Crowding distance sorting (Ω, Ω')
+Ω ←Sort according to Non-dominated Set and Crowding distance (Ω, Ω') gen 1⁄4 gen þ1
+End While
+Return S
+3.1.2. Coding
+The coding mode of individuals in the population adopts real coding, which means each position represents a measurement and control task.
+Fig. 3 shows a task sequence with the upper corner indicating algebra,
+Fig. 2. Overall flow of LGNSGAII.
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ the lower corner indicating the position in the sequence and top six. Code value indicates the task number, that is, Task-time window Selection
+Algorithm (TTSA) is first used for the task with the task number value y0
+1.
+The specific TTSA is introduced in Section 3.2.
+The advantage of using real coding is that this encoding can get a legal solution because each encoding location is unique and clearly indicates the order between tasks.
+3.1.3. Initial population generation
+The initial solution is generated by a randomly generated method, and the length of each solution is equal to the length of the task sequence.
+Each measurement task is allocated to a location where task scheduling is performed in a random manner. In this way, an initial planning scheme is obtained, and the subsequent optimization process is performed after the sequence is initialized.
+3.1.4. Non-dominated sorting
+Non-dominated sorting method reference the [20] proposed a fast non-dominated sorting method. It is a sorting algorithm with complexity
+Oðmn2Þ, where m represents the number of objectives and n represents the number of individuals in the population. The non-dominated sorting first determines the dominating number to be the first layer according to the dominance number of each solution in the entire solution space. Then it selects an individual from the first layer and traverses its corresponding dominating set for each individual the dominance number is subtracted by 1. If dominance number becomes 0, the second layer is obtained. By this way, we can get all layers. When comparing different results, we prefer to a solution with a lower rank.
+3.1.5. Crowding distance sorting
+Calculation and sorting of crowding distance are carried out in each dominating set. Crowding-distance means the density of an individual in a dominant set, denoted by Γ1⁄2g. First, crowding distance of each individual is initialized to zero. Thereafter, the individuals are sorted according to the m-th objective function. Crowding distance of the first and last individual sorting result is defined as positive infinity. Then, the formula for crowding distance from the second to the penultimate individual is as shown in Formula (11).
+Γ1⁄2g 1⁄4 Γ1⁄2g þ
+ f gþ1 m
+ f g1 m
+ f max m
+ f min m
+
+(11) where, f max m and f min m represent the maximum and minimum values of the m-th objective function. In each non-dominated front, solutions with smaller crowding distances are better than solutions with larger crowding distances. Each generation of populations must be consistent in size.
+In NSGAII algorithm, individuals are first added to the new population based on the results of non-dominated sorting. If an individual in a layer joins the population and exceeds the original population, algorithm will choose according to crowding distance. Results of sorting are filled in order from small to large until the population size is equal to the initial setting.
+3.1.6. Learning mechanism
+In each generation, task conflict rate ratep con is calculated for the selected individual of selection operation. First, individual is split into P segments. The value of P is fixed from the beginning to the end of the algorithm. After that, according to the number of tasks failed in each segment, measurement and control tasks cannot be executed due to conflicts between tasks. Formula for the task conflict rate is shown in Eq.
+(12). Where np f indicates the number of failed tasks in the p-th fragment.
+ratep con 1⁄4 np f
+O=P
+(12)
+In the scenario of large-scale tasks, it is highly likely that there are many tasks that do not satisfy constraints in the scope of a certain fragment. Conflicts between these tasks can easily lead to further improvement of the objective function value. When conflicts between these tasks are reduced, a better mission execution plan can be obtained. Genetic manipulation in LGNSGAII will introduce learning mechanisms so that optimization can proceed in a direction that is more conducive to higher objective function values.
+3.1.7. Selection
+In LGNSGAII, selection operation consists of two parts: One is to select individuals from the population, and the other is to select the appropriate genetic operation position from individuals. In the process of selecting an individual, roulette is used, as shown in Eq. (13). f g m is the value of the gth individual under the m-th objective function. Then, the individual is selected using a random number.
+ωg 1⁄4 f g m
+PN g1⁄41f g m
+(13)
+After selecting an individual, it is necessary to determine the location of the gene for the genetic operation. The choice of gene location uses the learning mechanism described in Section 3.1.6. The weight of the segment occupies the entire task sequence is calculated according to the task conflict rate of each segment, and the calculation formula is as shown in Formula (14).
+ηl 1⁄4 ratel con
+O=P
+(14)
+The segments selected of the individual determines the location in which the genetic operation is performed by means of a random number according to the weight ηl. Learning mechanism allows the task sequence to automatically improve the objective function based on optimization of each generation.
+3.1.8. Crossover
+The crossover operation is performed inside the individual, and there are two ways: between different segments (C1) and within the same segments (C2). The task sequence selected for both crossover operations is λ. For the crossover between segments, as shown in Fig. 4.
+The first way is the crossover in different segment, as is shown in
+Fig. 4. Gray squares indicate that a task sequence in the first segment and a task sequence in the third segment are respectively selected by means of random numbers. These two tasks are equal in length and a new sequence is obtained after the exchange, which is the completion of the crossover operation.
+The second way is the crossover within the same segment, as is shown in Fig. 5. The positions of two crossover operations in the figure are all within the same segment. A new generation of individuals can be obtained by swapping the two segments.
+If two segments overlap occurs in the process of crossover within the same segment, one of the segments will be regenerated in a random manner. We define a shift operation Θ that randomly moves the φ backward (forward) if the selected segment contains the task or the last task of the first part of the task sequence and or length does not meet the genetic operation requirements. Random movement generates a moving distance randomly, when a moving operation is performed. The shift operation is shown in Fig. 6.
+New individuals can be generated by inter-segment and intrasegment crossover operations, so that the population can evolve toward better objective function values. Meanwhile, the crossover method can prevent the population from falling into local optimum and cannot jump out.
+Fig. 3. Task sequence coding.
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+3.1.9. Mutation
+The mutation operator includes two types of specific methods, which are defined as M1 and M2, respectively. M1 represents the mutation operation between the different fragments, and M2 represents the
+Fig. 4. Crossover operation in different segments (C1).
+Fig. 5. Crossover operation in the same segments (C2).
+Fig. 6. Shift operation.
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ mutation operation within the same fragments. The two mutation operators are selected in an equal probability manner after determining the mutation operator. First, we introduce the M1 mutation method, as shown in Fig. 7. The gray squares in Fig. 7 represent two individual tasks selected in different segments, and a new task sequence can be obtained after the two tasks exchange positions.
+After that, we give a schematic diagram of the M2 method, as shown in Fig. 8. In Fig. 8, 2 Gy squares represent a single task that is selected in the same segment. After the two tasks are exchanged, a new sequence is obtained, and the change occurs in one segment.
+The probability of mutation is much lower than the probability of crossover, but the mutation has a good effect on increasing the diversity of the population and improving the quality of the solution.
+3.2. Task-time window selection algorithm (TTSA)
+After each generation of a new population is obtained, the task sequence needs to be matched to the available time window of ground stations. Therefore, TTSA algorithm is embedded in LGNSGAII for use. In other words, the execution time of each task is decided. If the available time window cannot be selected to execute it, we should abandon this task and start the planning process for the next task. The pseudo code of
+TTSA is shown in Table of the algorithm.
+Algorithm 2: Task-time window Selection Algorithm (TTSA)
+Input: Task Sequence S, Time window Timewindow
+Output: Task execution plan Sexec
+For i 1⁄4 1 to jSj
+For j 1⁄4 1 to jTimewindowj
+Select available Time window (S, Timewindow)
+Sexec ←Use Location Selection Method (L1, L2, L3)
+If conflicts between tasks exist
+Use Task Slide Method (S1, S2)
+End If i 1⁄4 iþ1
+End For
+End For
+Reutrn Sexec
+TTSA's input is an individual in the population, a sequence of task execution. After using TTSA, it can get a final execution plan that can perform tasks and execution time. In this algorithm, there are three types of locations that can be selected for each task, namely the top position arrangement (L1) center position arrangement (L2) and the last position arrangement (L3). Top position arrangement indicates that the task selection is performed while the task is executed in its time range, and select the earliest ground station available time window position, as shown in Fig. 9. L2 means that put the task in the center of center part of
+Fig. 7. Mutation operation in different segments (M1).
+Fig. 8. Mutation operation in the same segments (M2).
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ ground station available time window position, and it is also in its own available time, as shown in Fig. 10. L3 indicates that the task selection is performed while the task is executed in its time range, and select the latest ground station available time window position, as shown in Fig. 11.
+Figs. 9–11 uses the time window of three ground stations as an example to select the task location.
+For a measurement and control task, the above three location selection methods have the possibility of encountering conflicts among tasks.
+Therefore, we also define the way in which the two tasks slide in the time window, sliding forward (S1) and backward (S2). S1 means that if the task cannot perform the task at the current time window position, the task is attempted to move forward to find the available position, and then determine the task execution time, as shown in Fig. 12. S2 means that if the task cannot perform the task at the current time window position, the task is attempted to move backward to find the available location, and then the time to execute the task is determined, as shown in Fig. 13. If there is still no time window available after movements, this task is not executed and time window is selected for the next task.
+4. Experiments and results
+4.1. Experimental environment and experimental scenarios
+Experimental environment: The proposed algorithms are implemented by Matlab2017a on a desktop with Core I7-7700 3.6 GHz CPU,
+8 GB memory, and Windows 7 operating system. Experimental examples generated by STK are generated based on actual satellite application scenarios.
+Examples in this experimental part of this paper are close to the real application scenarios. Taking measurement and control tasks within a scheduling period as the planning goal, one of our cycles here is set to one day, which is 24 h. In one day's time, we constructed test cases for multiple satellites and multiple ground stations. All measurement and control tasks are generated according to the actual satellite operation. Initial orbital parameters for a satellite are shown in Table 1. Locations of satellites in space are characterized by six orbital parameters: the length of the semi-major axis (LSA), Eccentricity (E), inclination (I), argument of perigee (AP), right ascension of the ascending node (RAAN), and mean anomaly (MA). Satellites conclude two types: low-orbit satellites and high-orbit satellites. Satellites and ground stations in the experiment are all from China, and ground stations are only set up in China. Therefore, the available time window resources of satellites are valuable. Satellites can only perform measurement and control tasks when they pass through
+China. Correspondingly, measurement and control tasks include loworbit satellite measurement and control tasks and high-orbit satellite measurement and control tasks. In the meantime, we also consider simultaneous existence of low-orbit satellites and high-orbit satellites, which means that there are both two types of measurement and control tasks, which is named as an integrated measurement and control task.
+In this paper, different task scales are set for different types of measurement and control tasks to test the performance of proposed
+LGNSGAII. Task size includes scenarios of 50, 100, 150, 200, 250, 300,
+500, and 1000 tasks.
+4.2. Comparison algorithm
+Comparison algorithms in this paper chooses four multi-objective optimization algorithms. We selected NSGAII algorithm, MOEA/D algorithm, MOEA/DD algorithm and MOMA/D algorithm respectively. Genetic algorithms have a great performance in SRSP. NSGAII algorithm and MOEA/D algorithm are optimum optimization methods in multiobjective optimization algorithm [24,25]. MOEA/DD algorithm and
+MOMA/D algorithm are multi-objective evolutionary algorithms with very good optimization results in two recent studies, which are state-of-the-art algorithms. The following is a brief introduction to
+MOEA/D algorithm, MOEA/DD algorithm and MOMA/D algorithm.
+MOEA/D algorithm: Multi-objective evolutionary algorithm based on decomposition (MOEA/D) is an optimization algorithm for solving multiobjectives proposed by Zhang in 2007 [22]. The core idea of this algorithm is to transform a multi-objective optimization problem into a single-objective optimization problem and perform simultaneous optimization. This is a method that is sufficiently classic and optimized in multi-objective optimization.
+MOMA/D algorithm: It is a new algorithm proposed by Zhang [32], named as multi-objective memetic algorithm based on decomposition for big optimization problems (MOMA/D), is proposed. It is a new improved memetic algorithm.
+MOEA/DD algorithm: Deb [34] suggests a unified paradigm, which combines dominance and decomposition-based approaches, for many-objective optimization. Our major purpose is to exploit the merits from both of dominance- and decomposition-based approaches to balance the convergence and diversity of the evolutionary process. It has
+Fig. 10. Center position arrangement (L2).
+Fig. 11. Last position arrangement (L3).
+Fig. 12. Sliding forward (S1).
+Fig. 13. Sliding backward (S2).
+task
+TW1
+Fig. 9. Top position arrangement (L1).
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ better performance on four state-of-the-art algorithms on a number of unconstrained benchmark problems. So, we choose it as one of our comparison algorithms.
+4.3. Experimental parameter setting
+LGNSGAII and other comparison algorithms all belong to the evolutionary algorithm, and it improves solution effect by means of population evolution. In order to compare optimization effects of different algorithms, we set parameters to the same, as shown in Table 2. Where pc represents the crossover probability, pm represents the probability of mutation, N represents the population size, and Gen represents the optimized generation.
+In addition, some special settings are required in different algorithms.
+In genetic algorithm, we choose to set the objective 1 as the optimization standard. In MOEA/D, in addition to the same parameter settings as other algorithms, a new parameter needs to add a neighborhood vector parameter to 20.
+4.4. Simulation results
+This section will verify the algorithm effect of our proposed
+LGNSGAII. Simulation experiment will use the algorithm to prepare and schedule low-orbit satellite measurement and control tasks, high-orbit satellite measurement and control tasks and integrated measurement and control tasks under different task sizes. First, we conducted experiments on low-orbit satellite measurement and control task scheduling.
+Results are shown in Table 3.
+In the experiment, each algorithm was run 30 times. The results table shows the average value of the different algorithms for different functions, the best value, the standard deviation (SD). We also compared the number of non-dominated solutions obtained by the multi-objective optimization algorithm. It can be seen from Table 3 that in the low-orbit satellite range scheduling, the overall performance of multiple optimization algorithms is relatively close. From the scale of 50–300 tasks, optimization effect of
+LGNSGAII is the most ideal among several algorithms. When the task size is
+50, all five algorithms can successfully complete the scheduling of all tasks and select the appropriate execution time for tasks. As the size of tasks increases, the number of failed tasks increases, but can be kept at a relatively low level. It can be said that LGNSGAII can well complete low-orbit satellite MO-SRSP. If we use a single objective algorithm, such as genetic algorithm, it isdifficult to balance different objectives. This reflects that the single-objective optimization algorithm has certain limitations compared to the multi-objective optimization algorithm. From the results, wecan also see that all algorithms have less fluctuation in the low-orbit satellite range scheduling, and the standard deviation in each experimental scene is relatively small. Because the single mission of low-orbit satellite measurementandcontroltasks haslow profits, localadjustmentofthe planning scheme has little impact on the final program progit. In the case of individual experimental scenarios, there is a comparison algorithm superior to
+LGNSGAII. For example, in the scenario where thetask size is 150 tasks, the optimal planning result of MOMA/D in objective function 1 is better than the proposed algorithm. In this case, the comparison algorithm can only achieve one objective function value better than LGNSGGAII, and two objective functions' values can't achieve the best results. Therefore, our proposed algorithm can solve MO-SRSP problem better.
+After that, we performed algorithm tests on the high-orbit satellite range scheduling problem of different task scales. Results are shown in
+Table 4. Compared with low-orbit satellite measurement and control tasks, high-orbit satellite measurement and control tasks have longer mission time lengths and mission profits, and planning and scheduling will be more difficult. As can be seen from Table 4, high-orbit satellite measurement and control task sequence with the same number of tasks has a higher profit, and is accompanied by a higher task failure rate. For example, when the task size is 300, task failure rate after optimization using LGNSGAII is still 34.7%. It can be seen from results that the proposed algorithm has better applicability for more complex scenarios. In the high-orbit satellite range scheduling experiment, optimization results of the algorithm fluctuate greatly, and task profit and task failure rates of different planning schemes change significantly. It can be seen that the standard deviation of LGNSGAII in 30 experiments is smaller than the other five algorithms.
+After the low-orbit satellite range scheduling experiment, we designed a range scheduling experiment under large-scale mission scenario of high-orbit satellites, with a task size of 500 tasks and 1000 tasks.
+Results are shown in Figs. 14–17. It can be seen from Fig. 14 and Fig. 15 that LGNSGAII performs most prominently in the scheduling results of high-orbit satellite measurement and control tasks with a task size of 500.
+Among the other four algorithms, NSGAII performs better in objective 1.
+It can be seen from Fig. 16 and Fig. 17 that when the task size is 1000, in terms of task profit, the proposed algorithm is 2.27% better than the optimal result in comparison algorithms. From the optimization effect of the objective function 2, the difference between the MOMA/D and our proposed algorithm is small, and has a low task failure rate.
+After that, we verify algorithm optimization speed. We compare CPU time of LGNSGAII with NSGAII by computing the time required for
+LGNSAII to achieve the same optimization effect as NSGAII. Optimization effect is based on the value of objective function 1. If NSGAII does not complete the optimization within the specified time, the optimization effect of it at the end of specified running time will be taken as the evaluation standard. In order to visually display the advantage of calculation time, in each set of experiments, the result time of taking a larger CPU time is unit 1, and the other algorithm is converted into the proportion of time consumption according to the actual length of time.
+Result is shown in Fig. 18. As can be seen in Fig. 18, as the number of tasks increases, the gap between optimization speed of LGNSGAII and
+NSGAII increases. When the task size is 300, LGNSGAII can reduce the
+CPU time by 4.5% when the same optimization effect is achieved.
+Based on high-orbit satellite range scheduling simulation and loworbit satellite range scheduling simulation, an experiment of integrated task measurement and control scheduling is carried out. We refer to a hybrid task with both low-orbit satellite measurement and control tasks and high-orbit satellite measurement and control tasks as an integrated task. In order to more comprehensively test the performance of algorithms in multi-objective optimization, we adopted a classic evaluation index hypervolume in multi-objective optimization as the evaluation standard [23]. This is an evaluation index that can fully evaluate non-dominated sets and Pareto fronts. Formula for Hypervolume (HV) is shown in Eq. (15):
+Table 1
+Satellite orbital parameters.
+Parameter
+LSA
+E
+I
+AP
+RAAN
+MA
+Value
+7141701.7
+0.000627
+98.5964
+95.5069
+342.307
+125.2658
+Table 2
+Optimization algorithm parameter setting.
+Notation
+Description pc
+0.9 pm
+0.1
+N
+
+Gen
+
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+HV 1⁄4 volume
+
+[ jNDj i1⁄41 vi
+
+(15)
+Where ND represents the number of solutions included in the nondominated set, vi is the hypercube containing the origin and is bordered by hyperplanes passing through the solution i in the objective space, with one hyperplane for each objective perpendicular to the objective's axis.
+We chose a small-scale integrated task measurement and control scheduling with 150 tasks as the experimental scenario, comparing the
+HV values of LGNSGAII, NSGAII and MOEA/DD. Among them, the reference point is set to (1,0). Each algorithm was run 30 times, and statistics were performed based on results of the operation to obtain a boxplot Fig. 19.
+As can be seen from the boxplot Fig. 19, the hypervolume of
+LGNSGAII is much higher than the hypervolume obtained by NSGAII. In other words, we find that the performance of LGNSGAII is much better than simple NSGA-II algorithm. The algorithm we proposed with the maximum HV value it can get is similar with MOEA/DD, and volatility is smaller.
+After that, we compared the Pareto front obtained by LGNSGAII and
+MOEA/D. We selected 500 integrated tasks MO-SRSP as experimental scenarios, and results are shown in Fig. 20. The reason for choosing
+MOMA/D as a comparison criterion is that this algorithm has a better performance in comparison algorithms in the satellite range scheduling problem.
+Table 3
+Results of different scenarios in low-orbit satellites.
+Problem
+LGNSGAII
+NSGAII [35]
+MOEA/D [22]
+MOEA/DD [34]
+MOMA/D [32]
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+
+F1
+
+0.000
+
+0.000
+
+0.000
+
+0.000
+
+0.000
+F2
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+NS
+10.3
+9.7
+10.1
+10.3
+10.3
+
+F1
+
+38.911
+
+41.829
+
+43.571
+
+42.485
+
+41.592
+F2
+0.012
+0.012
+0.000
+0.012
+0.012
+0.000
+0.012
+0.012
+0.000
+0.012
+0.012
+0.000
+0.012
+0.012
+0.000
+NS
+13.5
+11.7
+12.5
+12.9
+13.1
+
+F1
+
+73.518
+
+87.573
+
+90.568
+
+73.917
+
+74.149
+F2
+0.012
+0.007
+0.004
+0.019
+0.013
+0.008
+0.018
+0.007
+0.004
+0.014
+0.007
+0.004
+0.016
+0.007
+0.004
+NS
+12.7
+11.8
+12.6
+11.7
+12.4
+
+F1
+
+85.162
+
+104.247
+
+93.572
+
+101.361
+
+103.165
+F2
+0.023
+0.02
+0.009
+0.028
+0.03
+0.010
+0.025
+0.02
+0.010
+0.024
+0.03
+0.011
+0.025
+0.03
+0.012
+NS
+13.4
+12.8
+13.3
+14.1
+13.8
+
+F1
+
+125.532
+
+137.501
+
+138.095
+
+137.437
+
+141.568
+F2
+0.035
+0.028
+0.016
+0.043
+0.032
+0.015
+0.035
+0.028
+0.021
+0.037
+0.032
+0.017
+0.037
+0.032
+0.016
+NS
+11.2
+10.4
+9.7
+10.5
+10.2
+
+F1
+
+161.582
+
+201.849
+
+170.583
+
+196.730
+
+169.374
+F2
+0.053
+0.043
+0.021
+0.057
+0.047
+0.024
+0.061
+0.047
+0.028
+0.053
+0.043
+0.023
+0.055
+0.043
+0.025
+NS
+14.2
+13.8
+10.7
+13.3
+13.6
+Table 4
+Results of different scenarios in high-orbit satellites.
+Problem
+LGNSGAII
+NSGAII [35]
+MOEA/D [22]
+MOEA/DD [34]
+MOMA/D [32]
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+Ave.
+Best
+SD
+
+F1
+
+0.000
+
+0.000
+
+0.000
+
+0.000
+
+0.000
+F2
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+NS
+9.7
+9.3
+9.5
+9.7
+9.1
+
+F1
+
+57.148
+
+62.942
+
+75.602
+
+81.328
+
+59.243
+F2
+0.080
+0.060
+0.024
+0.093
+0.060
+0.047
+0.086
+0.070
+0.021
+0.081
+0.060
+0.030
+0.083
+0.070
+0.018
+NS
+10.1
+10.3
+9.9
+10.1
+9.9
+
+F1
+
+81.529
+
+89.172
+
+97.453
+
+73.702
+
+114.586
+F2
+0.124
+0.107
+0.038
+0.149
+0.14
+0.035
+0.135
+0.113
+0.040
+0.146
+0.107
+0.051
+0.141
+0.12
+0.037
+NS
+12.6
+11.4
+12.2
+10.9
+11.8
+
+F1
+
+93.582
+
+105.394
+
+115.572
+
+102.469
+
+119.422
+F2
+0.185
+0.115
+0.077
+0.190
+0.17
+0.069
+0.210
+0.175
+0.072
+0.183
+0.15
+0.063
+0.194
+0.125
+0.064
+NS
+10.9
+10.2
+9.9
+10.9
+10.8
+
+F1
+
+160.497
+
+175.622
+
+195.583
+
+191.482
+
+170.528
+F2
+0.285
+0.124
+0.197
+0.287
+0.156
+0.232
+0.295
+0.176
+0.182
+0.327
+0.164
+0.191
+0.313
+0.152
+0.274
+NS
+11.5
+11.3
+10.7
+11.6
+10.6
+
+F1
+
+218.583
+
+326.471
+
+244.752
+
+230.859
+
+221.325
+F2
+0.347
+0.147
+0.375
+0.353
+0.176
+0.371
+0.353
+0.167
+0.412
+0.403
+0.157
+0.396
+0.348
+0.163
+0.392
+NS
+12.6
+10.5
+11.2
+11.9
+12.2
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+As can be seen from Fig. 20, the Pareto front obtained by our proposed algorithm is better than the Pareto front of MOEA/D. The Pareto front obtained by LGNSGAII can be divided into two sets approximately. A collection contains higher task sequence profit and higher task failure rates. Another set has lower profit and low task failure rate. Pareto front obtained by MOEA/D is relatively uniform. In this respect, LGNSGAII performs better than the classical multi-objective optimization algorithm and can continue to study in terms of uniformity.
+It can be seen from above experiments that the proposed LGNSGAII is better than the other four comparison algorithms in both overall optimization quality and single objective function. Compared to NSGAII, our algorithm can shorten the time consumed in CPU. From overall trend,
+LGNSGAII is more suitable for solving MO-SRSP under large-scale mission scenarios. We also use the evaluation index hypervolume in the multi-objective optimization algorithm to evaluate algorithms. In
+Fig. 14. Objective 1 results for 500 high-orbit satellites mission scenarios.
+Fig. 15. Objective 2 results for 500 high-orbit satellites mission scenarios.
+Fig. 16. Objective 1 results for 1000 high-orbit satellites mission scenarios.
+Fig. 17. Objective 2 results for 1000 high-orbit satellites mission scenarios.
+Fig. 18. CPU time for high-orbit satellites in different scale mission scenarios.
+Fig. 19. Integrated task small-scale scenario boxplot.
+Y.-J. Song et al.
+Swarm and Evolutionary Computation 49 (2019) 194–205
+
+ terms of HV indicators, the performance of LGNSGAII algorithm is much better than that of NSGAII. In addition, we also compared the Pareto front obtained by MOEA/D with the Pareto front obtained by LGNSGAII.
+Overall, LGNSGAII can solve MO-SRSP well and has a great practical application prospect.
+5. Conclusion
+Based on satellite measurement and control process, this paper proposes a multi-objective SRSP (MO-SRSP) mathematical model. The objectives is to maximize task sequence profit and minimize task failure rate. We also give some constraints. After analyzing characteristics, we propose a learning mechanism with a new index called task conflict rate based on NSGAII algorithm. This learning mechanism can guide the optimization process of evolutionary algorithms.
+We have designed various types of experiments to verify effectiveness of the proposed algorithm. It can be concluded from experimental result that our algorithm is more ideal for low-orbit satellite and high-orbit satellite range scheduling, which results a better optimization effect and calculation speed. LGNSGAII has outstanding performance for complex application scenarios, especially in large-scale application scenarios. We also carried out measurement and control scheduling for integrated tasks. Compared with classic MOMA/D algorithm, LGNSGAII is more suitable for solving MO-SRSP.
+In the following research, we will consider MO-SPSR problem with more objective functions and give a high-efficiency solving algorithm for high-dimensional optimization problems. Besides, how to get a more evenly distributed Pareto front can be chosen as a research emphasis in the future.

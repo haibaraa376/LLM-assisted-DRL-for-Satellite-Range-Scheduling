@@ -1,0 +1,1204 @@
+Contents lists available at ScienceDirect
+Information Sciences journal homepage: www.elsevier.com/locate/ins
+UHTS-DRL: A deep reinforcement learning framework for  integrated agile satellite observation and data transmission  scheduling
+Jiaqi Cheng a , Mingfeng Fan b iD , Yi Gu a , Wei Tang c , Qizhang Luo a ,
+Yalin Wang a , Xinwei Wang d,∗ iD , Guohua Wu a,∗ iD a Central South University, Changsha, China  b National University of Singapore, Singapore, Singapore  c Northwestern Polytechnical University, Xi’an, China  d Queen Mary University of London, London, UK
+A R T I C L E
+ I N FO
+Keywords:
+Satellite observation 
+Satellite data transmission 
+Integrated scheduling 
+Deep reinforcement learning a b s t r a c t
+Efficient Earth observation satellite scheduling requires integrated management of both observation and data transmission tasks to optimize the overall system efficiency in practice. However,  conventional approaches typically treat these processes separately, leading to suboptimal resource utilization. This paper formulates the Earth observation satellite scheduling as a Multiagile Satellite and Multi-ground Station Integrated Observation and Data Transmission Scheduling 
+Problem (MSIODTSP) and proposes a Unified Hierarchical Two-stage Scheduling Deep Reinforcement Learning (UHTS-DRL) framework for solving MSIODTSP. The UHTS-DRL approach formulates MSIODTSP as a unified Markov Decision Process (MDP), enabling joint optimization of  observation and transmission scheduling while accounting for multi-orbit time windows and complex operational constraints. The framework employs a hierarchical policy network comprising a  time window encoder, a state encoder, and a dual-decoder for two-stage scheduling, facilitating end-to-end optimization without the need for handcrafted heuristics. Experimental results  demonstrate that UHTS-DRL consistently outperforms existing approaches across various problem scales, resource configurations, and geographical target distributions, achieving up to 12.5%  relative improvement in total profit while maintaining computational efficiency.
+1. Introduction
+The increasing demand for Earth observation services, driven by applications in environmental monitoring, disaster response, and  military reconnaissance, has led to significant challenges in data acquisition [1]. To address these challenges, agile satellites have  been widely deployed in Earth observation networks. Unlike conventional satellites limited to nadir observations, agile satellites can  rotate along multiple axes to observe targets at various angles, transforming discrete observation points into extended observation  time windows (OTWs) [2]. However, this agility introduces time-dependent transition constraints between consecutive observations,  as the required maneuvering time varies based on the angular distance between targets, significantly complicating the scheduling  problem.
+While agile satellites enhance data collection capabilities, they must also periodically transmit the acquired data to Earth via  ground station networks during specific transmission time windows (TTWs). The scheduling complexity increases substantially when
+∗ Corresponding authors.
+Email addresses: xinwei.wang@qmul.ac.uk (X. Wang), guohuawu@csu.edu.cn (G. Wu).
+https://doi.org/10.1016/j.ins.2026.123200 
+Received 30 August 2025; Received in revised form 3 February 2026; Accepted 3 February 2026
+Information Sciences 740 (2026) 123200 
+Available online 6 February 2026 
+0020-0255/© 2026 Published by Elsevier Inc. 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Fig. 1. Schematic diagram of MSIODTSP. There are two satellites observing their respective targets. Red dots represent selected targets for observation, while gray  dots indicate unobserved targets.
+considering that satellites could perform multiple orbits around the Earth within a time horizon, generating numerous OTWs and 
+TTWs [2,3]. This creates an intricate operational environment where observation and data transmission tasks must be coordinated  while simultaneously satisfying multiple constraints, including visibility windows, onboard storage limitations and time-dependent  transition constraints. In addition, joint observation-transmission scheduling enables optimal resource allocation across the entire  scheduling horizon, maximizing system throughput and observation benefits while minimizing resource conflicts and idle periods. 
+Consequently, developing efficient algorithms for integrated observation and transmission scheduling represents a critical research  direction for enhancing satellite mission productivity.
+A critical limitation of existing approaches lies in their fragmented treatment of observation and data transmission tasks. Most prior  studies focus exclusively on either satellite observation scheduling [4,5] or data transmission scheduling [6], neglecting the inherent  interdependencies between these two processes in real-world applications. This decoupled optimization leads to suboptimal resource  utilization: aggressively scheduling observation tasks without coordinated data downlink planning may result in onboard memory  saturation, while scheduling too many ground station contacts could waste potential observation opportunities due to overlapping time  windows [7]. Therefore, to maximize the overall Earth observation system efficiency while maintaining realism in the formulation of  the scheduling problem, we study the Multi-agile Satellite and Multi-ground Station Integrated Observation and Data Transmission 
+Scheduling Problem (MSIODTSP).
+As shown in Fig. 1, MSIODTSP involves scheduling multiple agile satellites, which can adjust their orientation to observe different targets, and multiple ground stations that receive data from satellites. Each satellite must complete observations within its 
+OTW, and subsequently transmit the collected data to ground stations during the TTW. The objective is to maximize the total  profit from completed tasks, where a task is considered fully completed only when both relevant observation and data transmission are successfully executed. Partial profit is assigned to tasks that are observed but not transmitted, reflecting the value of partial  completion.
+In the past few years, various approaches have been reported including exact methods [2,8], heuristic methods [9,10] and metaheuristic methods [7,11] for solving MSIODTSP. However, there is a critical trade-off between solution quality and computational  efficiency, where exact methods become intractable for large instances while heuristics and metaheuristics sacrifice optimality for  speed. Deep reinforcement learning (DRL) presents a promising alternative for solving combinatorial optimization problems by  learning effective decision policies from patterns in extensive instance data with high computational efficiency [12,13]. While DRL  approaches have been applied to satellite observation scheduling [3], applications specifically addressing integrated observation  and data transmission scheduling remain limited. Existing DRL-based approaches for integrated observation and data transmission  scheduling incorporate several simplifications that limit their practical applicability, such as considering only single satellites in single  orbits [14] and simplifying satellites’ resource limitations [15,16] which do not fully reflect the multifaceted nature of real-world  satellite operations.
+To address the limitations of previous studies by considering multi-agile satellite, multi-ground station scenarios while fully  accounting for various constraints, we propose UHTS-DRL (Unified Hierarchical Two-stage Scheduling Deep Reinforcement Learning),  an end-to-end framework for solving MSIODTSP.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+We first formulate a unified Markov Decision Process (MDP) model for MSIODTSP, and then design a hierarchical policy network,  which features three key components: a time window encoder, a state encoder, and a dual decoder. The main contributions of this  paper are summarized as follows:
+• We introduce the MSIODTSP, which focuses on jointly optimizing observation and data transmission operations for Earth observation satellites. To address this challenge, we establish a unified MDP model that effectively captures the sequential  decision-making nature of satellite operations while considering critical constraints such as time windows, resource limitations,  and operational dependencies.
+• We introduce a UHTS-DRL framework that employs a hierarchical neural network, composed of a time window encoder, a state encoder, and a dual-decoder, to solve the MSIODTSP in an end-to-end manner. Specifically, the time window encoder, based on a Long Short-Term Memory (LSTM) network, effectively encodes the multiple time windows generated  by multi-orbit satellite operations; the state encoder captures the dynamic elements of the decision-making process; and  the dual-decoder, enhanced with attention mechanisms, reduces the problem’s complexity by decomposing decisions into  sequential satellite and task selections. This architecture addresses the MSIODTSP without relying on handcrafted heuristics or expert knowledge. To the best of our knowledge, this is the first work to tackle the MSIODTSP using a DRL-based  approach.
+• Extensive experiments across various scenarios demonstrate the superior performance of UHTS-DRL compared to traditional methods. The results indicate that UHTS-DRL consistently achieves higher profit rates while maintaining computational  efficiency across different problem scales, resource configurations and geographical target distributions.
+This paper is organized as follows: Section 2 reviews related work on DRL-based satellite scheduling. Section 3 introduces the 
+MSIODTSP problem. Section 4 details the unified MDP model for MSIODTSP, while Section 5 describes the proposed solution. Section 6  presents the experimental results, and Section 7 concludes the paper and outlines future directions.
+2. Related work
+This section focuses on the application of RL in satellite scheduling problems. The content is organized into three main categories:  satellite observation scheduling, satellite data transmission scheduling, and integrated satellite observation and data transmission  scheduling.
+2.1. Satellite observation task scheduling
+Research in satellite observation scheduling has progressed significantly at both single-satellite and multi-satellite levels in recent  years. For single-satellite scheduling, the emergence of deep reinforcement learning (DRL) has enabled more adaptive and intelligent  scheduling solutions. Generic MDP formulations [17] have demonstrated strong adaptability to unseen scenarios. To better handle  complex spatial relationships, local attention mechanisms [18] have been integrated into DRL frameworks to capture dependencies  between observation targets. To address the challenge of enforcing hard constraints in purely learning-based methods, hybrid approaches integrating DRL with rule-based methods [19] have been developed. Such approaches have demonstrated practical value  in operational satellite systems, exemplified by the FIS-PPO algorithm [20] which achieved improved observation efficiency for the 
+SATech-01 satellite while ensuring fair resource allocation.
+In multi-satellite scheduling, coordination among multiple platforms substantially increases complexity, necessitating advanced  neural architectures. Graph neural networks combined with Transformer architectures [21] effectively capture inter-satellite relationships and long-range dependencies, while multi-pointer networks with attention mechanisms [22] provide scalability for variable  constellation sizes. Single-agent reinforcement learning approaches [23] have shown superior performance in free communication  scenarios with simpler training procedures. To address heterogeneous satellite systems, specialized solutions combining DRL with  genetic algorithms [24] and multi-objective learning frameworks [25] have been developed. For missions with specific temporal patterns, dedicated algorithms such as POMP [14] improve efficiency by exploiting task periodicity. Large-scale constellations motivate  hierarchical approaches [26] that separate daily allocation from emergency response. Additionally, DRL-based frameworks [27] have  been proposed for coordinating satellites across both high and low Earth orbits.
+2.2. Satellite data transmission scheduling
+In satellite data transmission scheduling, Ren et al. [28] developed a specialized framework for high-altitude satellites and Ou  et al. [29] combined DRL with heuristic approaches for large-scale scenarios. In satellite data transmission networks with different  architectures such as data relay satellite networks and low Earth orbit satellite networks, researchers have proposed various DRLbased scheduling solutions. For data relay satellite networks, Li et al. [30] developed an attention-based encoder–decoder policy  network showing excellent scalability. Ma et al. [31] tackled telemetry, tracking, and command (TT&C) mission scheduling using 
+DRL, while Li et al. [32] developed a twin delayed deep deterministic policy gradient-based approach for the online satellite data  transmission scheduling problem. Chen et al. [33] introduced the RL-based ground station scheduling algorithm specifically for low 
+Earth orbit satellites, addressing both batch and individual task planning.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+2.3. Integrated observation and transmission scheduling
+The integration of observation and transmission scheduling remains a relatively unexplored area in satellite task scheduling. Early  attempts to address this challenge include Qu et al. [34] who developed an intelligent scheduling framework using imitation learning  based on mixed integer linear programming. For single satellite scenarios, Wen et al. [35] proposed a hybrid actor–critic reinforcement learning method to handle intensive observation scenarios. Long et al. [36] introduced a deep reinforcement learning approach  with varying-scale generalization for Earth observation satellite scheduling that comprehensively addresses resource consumption  and supplementary constraints. In terms of multi-satellite approaches, Chen et al. [15] applied multi-agent DRL with decentralized  partially observable MDP framework, while Li et al. [16] developed an attention-based distributed planning algorithm to coordinate  mission execution across multiple satellites, but ignored ground station availability constraints where multiple satellites might compete for limited downlink opportunities. Although these approaches offer valuable contributions, they have either focused only on  non-agile satellites or simplified the agility of agile satellites in their modeling frameworks.
+Some critical limitations in satellite scheduling have been identified through the above literature review. First, most approaches  separate observation and transmission scheduling into distinct optimization phases. Second, in the integrated observation and transmission scheduling research, most studies only consider non-agile satellites and incorporate simplifications in their planning, such  as neglecting time-dependent transition times and ground station resource constraints, which cannot effectively reflect real-world  operational conditions. These limitations highlight the need for more comprehensive approaches that effectively model the coupled  problem while maintaining computational efficiency.
+3. Problem description
+The MSIODTSP involves coordinating observation and data transmission activities across multiple agile satellites and ground  stations within a specified planning horizon. In this problem, a set of satellites S needs to observe a set of targets T and transmit the  collected data to multiple ground stations G within the planning horizon H .
+As mentioned above, agile satellites possess the capability to perform attitude maneuvers that enable them to observe targets  at varying angles off their ground track. This agility significantly expands the visible time windows for target observation, but also  introduces additional complexity to the scheduling problem, as the satellite requires time to transition between different observation  angles. Each agile satellite can rotate around three axes (roll, pitch, and yaw) to adjust its attitude for observing different targets,  with the transition time between targets dependent on the angular distance between their observation positions.
+Each target may have multiple visible time windows for both observation and data transmission during the planning horizon,  with the maximum number of windows limited to N max . A target could be observed by an agile satellite during its visible observation  windows, and its data could be transmitted to one ground station during the visible transmission windows. For each target, its  observation must be completed before its corresponding data transmission can begin. Each satellite has limited onboard resources: a  maximum memory capacity M max that constrains the total storage of observed tasks’ data, and a maximum energy capacity E max for  each orbital period T orbit. The energy of the satellites is reset to E max at the beginning of each new orbital period. 
+While a target’s mission receives a full profit only when both observation and subsequent data transmission are achieved, targets  that are observed but not yet transmitted are still included in the objective function with a partial profit. Accounting for these  observation-only targets allows for better use of available observation time windows, which might otherwise be underused if only  fully completed missions were considered. This partial profit setting (similar to the partial objective function value in [37]) is also  reasonable in practice, since the observation data stored on the satellite could potentially be transmitted to a ground station after the  planning horizon.
+4. Unified MDP model
+As shown in Fig. 2, the UHTS-DRL is divided into two main components: the unified MDP model and the policy network. The  unified MDP model is defined by a 4-tuple  = {, , , }. The state space  is comprehensively represented by static features and  dynamic features. The action space  consists of a selected satellite i and a selected task j. Actions generated by the policy network  influence the state through transition rules , which in turn yield corresponding rewards through reward function . In terms of the  policy network, the component consists of state and time window encoders that process the problem instance, and a dual-decoder  containing satellite selector and task selector modules that produce the actions. The reward signals obtained from the unified MDP  model are utilized by the REINFORCE algorithm to train the policy network, creating a reinforcement learning loop that optimizes  satellite task scheduling decisions.
+4.1. State
+The state space  is designed to capture all essential information required for satellite scheduling decisions, consisting of static  features that remain unchanged throughout the scheduling process and dynamic features that evolve with scheduling decisions.
+4.1.1. Static features
+The static features comprise three essential components: observation windows W 
+, obs
+ transmission windows
+[
+ W]
+ 
+, trans
+ 
+ 
+ and attitude 
+ 
+  requirements Θ. Specifically, each observation window wijl ∈ ij obs
+ 
+ W l ijl
+ obs
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ defines a feasible time interval tstart, t during which the end satellite i can observe the target j in its l-th window. Similarly, each transmission window w ikl
+∈ trans
+ W trans specifies an interval
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Fig. 2. The framework of solving MSIODTSP using UHTS-DRL.
+Table 1 
+Satellite state.
+Attributes
+Description
+Range e i 
+Remaining energy capacity 
+[0, E max]  m i 
+Available memory storage
+[0, M max] t i 
+Last task completion time (observation or transmission) 
+[0, H] 
+θ i
+Current Euler angles [θi
+ 
+ , φ i , ψ i ]
+R 3  n i 
+Number of stored tasks in memory 
+{0, 1, ... , |T |} p i
+Remaining time of current orbital period
+[0, T orbit]
+α i 
+Number of total remaining observation windows across all tasks 
+N >0 
+β i 
+Number of total remaining transmission windows across all tasks 
+N >0  v i 
+Total value of waiting tasks 
+R ≥0 
+ω i
+Average remaining transmission windows
+R ≥0
+τ o  i
+Time to the nearest observation window 
+[0, H] 
+τ t i
+Time to the nearest transmission window
+[0, H]
+[t
+ 
+] ikl, tikl
+ when the satellite i can transmit data to the ground start end
+ 
+ station k in its l-th window. For each observation window, the attitude  requirements θ 
+(t) ∈  angles 
+ 
+Θ prescribe a series of Euler 
+(roll, pitch, ijl
+ 
+ and yaw) [θ (t) , φ (t) , ψ (
+  t)] that satellite i must maintain at
+[
+]
+ 
+  ijl ijl
+  each time point t ∈ t
+, t while observing target j, ensuring precise attitude control throughou start end
+  t the duration of observation. 
+These static features collectively define the fundamental temporal, spatial, and operational constraints that must be met throughout  the scheduling process.
+4.1.2. Dynamic features
+The dynamic state of the scheduling system at decision time t is characterized by five key components: satellite states S t  i, target  states T t  j, ground station states G t k, satellite–target relations r t ij, and satellite–ground station relations qt ik. These states are continuously updated through a state transition function to reflect the evolution of the system during the scheduling process, enabling real-time  monitoring and adaptive management of operations. For notational simplicity in the following discussion, we omit the time index t  when describing the states and their transitions, with the understanding that all state variables are time-dependent.
+Satellite State: Each satellite state, represented by a 14-dimensional vector S i ∈ R 14 , encapsulates comprehensive information  about the operational status of satellite i. This includes resource levels, temporal status, attitude configuration, and relevant task  metrics. The details of the satellite state are listed in Table 1.
+Target State: The target state T j ∈ R 7 maintains the essential properties and the execution status of each target j. This state  tracks both the intrinsic requirements of the target and its progress through the observation and transmission phases. The details of  the target state are listed in Table 2.
+Ground Station State: Ground station states G k ∈ R 2 record the operational history of each ground station, maintaining information about their most recent data transmission activities. The details of the ground station state are listed in Table 3.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Table 2 
+Task state.
+Attributes
+Description
+Range
+π j 
+Target profit 
+R >0 
+δ j 
+Required observation duration 
+R >0 
+μ j 
+Storage requirement 
+R >0  o j 
+Observation completion indicator (0:no, 1:yes) 
+{0, 1} 
+σ j 
+Observing satellite 
+{0, ... , |S|} 
+ε j 
+Observation completion time 
+[0, H]  c j
+Transmission completion indicator (0:no, 1:yes)
+{0, 1}
+Table 3 
+Ground station state.
+Attributes
+Description
+Range
+λ k
+Last transmission task completion time
+[0, H]
+γ k
+Last communicating satellite
+{0, ... , |S|}
+Table 4 
+Satellite–target relationship.
+Attributes
+Description
+Range
+η ij
+Earliest possible observation time
+[0, H]
+ν ij
+Number of remaining observation windows
+{0, 1, ... , N max}
+Table 5 
+Satellite–station relationship.
+Attributes
+Description
+Range
+ζ ik
+Earliest possible transmission time
+[0, H]
+κ ik
+Number of remaining transmission windows
+{0, 1, ... , N max}
+In addition to the states mentioned above, we also maintain two types of relational states that capture the temporal and resource  constraints between components. These states are crucial for scheduling feasible operations.
+Satellite–Target Relation: Relations r ij ∈ R 2 between satellites and targets track the feasibility and availability of observation  opportunities. The details of the satellite–target relation are listed in Table 4.
+Satellite–Station Relation: Relations q ik ∈ R 2 between satellites and ground stations monitor the availability of data transmission  opportunities. The details of the satellite–station relation are listed in Table 5.
+4.2. Action
+The action space  comprises the selection of satellites and their operational tasks at each decision step. Specifically, an action  a t ∈  is represented as a tuple (i, j), where i indicates the selected satellite and j specifies the task. The task selection encompasses  three types of operations. First, when an observation target is selected, the satellite performs observation operations subject to  visibility windows, energy capacity and memory constraints. Second, if a ground station is selected, the satellite transmits its stored  observed tasks during a feasible communication window. Lastly, to handle situations where satellites have insufficient energy for  any operational tasks, we introduce a virtual task option that advances the satellite to its next orbital period, resetting its energy to  maximum capacity and updating other parameters. The execution time for each action is determined by the earliest feasible start  time, which is stored in satellite–target relations r or satellite–station relations q. The earliest start times are dynamically recalculated  when satellite or ground station states change, taking into account both satellite maneuverability constraints and time window  availabilities.
+4.3. Transition function
+The transition function  defines the evolution of system states after executing an action. Given current state s t and action a t = (i, j),  the state updates follow different patterns according to the operation type.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+For observation operations, j in the action represents an observation target. The satellite’s operational parameters are updated to  reflect both resource consumption and task execution. The primary state transitions include: e i← 
+{
+E max − (t i+ δj− Tnext) ⋅ Erate,  if cross orbit e i − δ j⋅ E rate, otherwise
+(1) m i← m i− μ j
+(2) t i← η ij+ δ j
+(3) n i← n i + 1 
+(4) p i←T orbit− ((η ij + δ j ) mod T orbit) 
+(5) where T  represents the start time of next orbital period, E 
+The 
+ is the energy consumption rate.  satellite’s attitude next rate
+ 
+ angles θi
+ 
+  are adjusted to match the required observation geometry. The system then recalculates window availability metrics (α 
+ , β ) 
+ and i i
+  target-related parameters (v , ω , τ o, 
+ 
+ 
+ 
+τ t) based on the updated state. Correspondingly, target j updates its status vector as: i i i i
+⎧
+⎪
+⎨
+⎪⎩ o j← 1
+σ j← i
+ε j← η ij+ δ j
+(6)
+Following the satellite state update, the relational states for satellite i must also be updated. The earliest execution times in r ij and q ik  are recalculated considering visibility windows, attitude maneuver times, and resource availability. This ensures the time-dependent  constraints of agile satellites are satisfied. Meanwhile, ground station states remain unchanged during observation operations.
+For data transmission operations, j in the action represents a ground station. Satellite’s state transitions primarily reflect data  transfer and resource consumption: e i ←
+⎧
+⎪
+⎨
+⎪⎩
+E max− (t i +
+δ j
+ρ− T next ) ⋅ E rate,  if cross orbit e i − 
+δ j
+ρ⋅ E rate, otherwise
+(7) m i ← m i + μ j
+(8) t i← ζ ij+ 
+δ j
+ρ
+(9) n i← n i− 1
+(10) p i←T orbit− ((ζ ij+ 
+δ j
+ρ) mod T orbit)
+(11) where ρ denotes the transmission-to-observation time ratio. Given the scarcity of transmission windows during the planning horizon,  the system prioritizes task transmission based on their profits. Specifically, targets stored in satellite i are sorted in descending order  of their profits and transmitted sequentially until either all targets are transmitted or constraints (transmission window duration,  energy) are reached. For each transmitted target m that was previously observed by satellite i, its status updates as: c m ← 1 
+(12) 
+The ground station j records the completion of transmission by updating:
+{
+λ j← ζ ij+ 
+δ j
+ρ
+γ j← i
+(13)
+Following the satellite state update, the relational states r im and q ij for satellite i are also recalculated considering the data transmission  preparation time constraints between satellites and ground stations.
+As for virtual task operations, designed to handle energy depletion scenarios, the satellite advances to its next orbital period while  resetting its operational parameters: e i← E max
+(14) t i← min[(⌊t i ∕T orbit⌋ + 1) ⋅ T orbit , H]
+(15) p i← 
+{
+0  if t i= H 
+T orbit otherwise
+(16)
+Target states and ground station states remain unchanged, while the relational states are recalculated due to the new state of the  satellite.
+It is important to note that while our current implementation uses deterministic parameters for benchmark comparison, the  transition function  naturally accommodates stochastic execution times by updating states based on realized values at each decision  step. This design allows UHTS-DRL to extend to uncertain operational environments without architectural changes.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Fig. 3. The architecture of the policy network.
+4.4. Reward
+The reward function  ∶  ×  → R is defined as:
+(s, a) =
+⎧
+⎪
+⎨
+⎪⎩
+0  for virtual task  w o  j⋅ π j for observation completion 
+π j  for transmission completion
+(17) where w o  jrepresents the lower weight profit for target j when only completing observation.
+5. Methodology
+In this section, we introduce the proposed policy network for solving MASIODTSP. Our architecture incorporates attention mechanisms and LSTM-based sequential processing to handle the complex relationships among satellites, tasks, and ground stations. The  architecture of the policy network is illustrated in Fig. 3.
+5.1. Overview
+The policy network models the schedule construction as a sequential decision process where at each step, both a satellite and a  task (a target for observation or a ground station for transmission) are selected. Specifically, we focus on learning a stochastic policy 
+π θ(a t |s t ) represented by a neural network with trainable parameters θ. The joint probability of generating a complete schedule can  be factorized based on the chain rule: p(s T |s 0 ) =
+T −1
+∏  t=0
+π θ(a t|s t )p(s t+1 |s t , a t ) 
+(18) where s 0 denotes the initial schedule state, and s Trepresents the terminal state.
+The policy network architecture consists of three main components: a time window encoder for processing observation and transmission windows, a state encoder for capturing system dynamic states, and a two-stage scheduling decoder that enables both  satellite selection and target selection at each decision step. Specifically, the time window encoder processes the observation and  transmission windows once at the beginning, since these time windows remain unchanged throughout the scheduling process. The  state encoder, however, needs to re-encode the state information after each decision as the states of satellites, tasks, and stations are  dynamically updated. At each decision step t, the decoder first selects a satellite i based on the current encoded states and window features, then selects a feasible task j (either a target or ground station) for the chosen satellite, forming the action a t= (i, j). This process continues until either all tasks are scheduled or all satellites reach the planning horizon H . In the following subsections, we  elaborate on each component of this architecture.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+5.2. Time window encoder
+The time window encoder embeds observation windows with angle constraints and transmission windows into a high-dimensional  feature space. Given the different characteristics of these windows, we design specialized encoding mechanisms for each type.
+To enhance model generalization, we first normalize the time windows:
+̃wstart ijl
+= w start ijl
+H
+(19)
+̃wend  ijl = w end ijl
+H 
+(20) where ̃ wijl represents a normalized time window of the l-th window for satellite i observing or transmitting task j, and H is the  planning horizon.
+For observation windows, considering that each satellite–task pair may have multiple available time windows with varying attitude  requirements, we design an LSTM-based encoding structure. First, the normalized time windows and Euler angles are encoded through  separate neural networks, each consisting of a linear projection, layer normalization, ReLU activation, and dropout layers: e time ijl 
+= Dropout ( ReLU ( LayerNorm ( FF ( ̃ wijl 
+)))) 
+(21) e angle ijl 
+= Dropout 
+ ReLU ( LayerNorm ( FF ( ̃θ ijl
+)))) 
+(22) 
+(
+Here, ̃θ ijlrepresents the average Euler angles (roll, pitch, and yaw) that define the satellite’s required attitude during observation window w ijl .
+To process the sequence of available windows and their associated attitude requirements, we employ an LSTM network that takes  the concatenated features as input: h obs ij
+= LSTM 
+([  etime ijl; eangle ijl
+]) 
+(23) where the final hidden state h obs  ij represents the encoded observation window features for this satellite–target pair.
+For transmission windows, which only require temporal accessibility constraints without attitude constraints, we implement a  simpler encoding process: h trans ij
+= LSTM(etime ijl) 
+(24) the final hidden state h trans  ij is taken as the transmission window feature of satellite i to ground station j.
+5.3. State encoder
+The state encoder is designed to capture the dynamic features of the scheduling system. We encode all the dynamic states: satellite  states S i , target states T ,i
+ station states G ,
+(satellite–target) i
+ and relation states r ij
+ 
+ 
+ 
+ 
+  and q ij (satellite–station). Each type of state is  processed through an MLP encoder:
+⎧
+⎪
+⎪
+⎪
+⎨
+⎪
+⎪
+⎪⎩ h S i= Dropout(ReLU(LayerNorm(FF(S i )))) h T  i= Dropout(ReLU(LayerNorm(FF(T i )))) h G i= Dropout(ReLU(LayerNorm(FF(G i )))) h r ij= Dropout(ReLU(LayerNorm(FF(r ij )))) h q ij= Dropout(ReLU(LayerNorm(FF(q ij ))))
+(25)
+This encoding process is performed through two consecutive layers, yielding the final encoded representations that capture the  dynamic characteristics of the system states.
+5.4. Dual-decoder
+The dual-decoder implements a hierarchical decision-making process that sequentially selects both satellites and the corresponding  tasks (observation targets or ground stations) at each decision step. It consists of two main components: a satellite selector and a task  selector, working in conjunction to generate complete scheduling decisions.
+The satellite selector leverages multi-head attention mechanisms to process both task-related and station-related features for each  satellite. This component evaluates all available satellites based on their current states, encoded window features, and relational  information to generate selection probabilities.
+The task selector, activated after a satellite is chosen, processes the chosen satellite’s state along with relevant observation target  and station features to determine the most appropriate task for the selected satellite. It employs a unified selection mechanism that  can handle both observation targets and ground stations as potential tasks, making it flexible for different operational scenarios.
+This hierarchical structure allows the decoder to decompose the complex scheduling decision into manageable sub-decisions  while maintaining the dependencies between satellite and task selection. In the following subsections, we detail the architecture and  operation of each selector component.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+5.4.1. Satellite selector
+The satellite selector evaluates and selects satellites based on their current states and their relationships with potential targets and  ground stations. It incorporates three main processing stages to generate satellite selection probabilities.
+First, the selector generates unified feature representations for observation targets and ground stations through projection layers. 
+For each satellite–target pair, it concatenates the target state, observation window features, and relational state, then projects them  into a unified hidden dimension through: h target ij
+= W proj
+[ h T j; hobs ij; hr ij
+] 
+(26) where h T, represent j
+ h obs, ij
+ and hr ij
+ 
+ the encoded target state, observation window features, and relational state respectively.
+ 
+Similarly, for satellite–station pairs, station features are processed through: h station ij
+= W proj
+[ h G j; htrans ij
+; hq ij
+] 
+(27) q where h G , h trans, and h  denote the encoded station j  ij ij
+ 
+ state, transmission window features, and relational state.
+Second, the selector employs two parallel multi-head attention modules to generate target and station contexts for each satellite.
+Taking the satellite state as query and the projected features as key-value pairs: c target i 
+= MultiHeadAttn 
+( h S i, htarget ij
+, htarget ij
+) 
+(28) c station i
+= MultiHeadAttn 
+(  hS i, hstation ij
+, hstation ij
+) 
+(29) ctarget where 
+  and cstation
+  capture the relevant i
+ target and station contexts for each satellite’s decision-making.
+i
+ 
+Finally, the selector concatenates the satellite state with both target and station context and processes them through a fusion network: h fused i
+= FFN([h S i ; ctarget i
+; cstation i
+]) 
+(30)
+The fused features are then passed through a scoring network to generate selection probabilities: p(i) = softmax(W scoreh fused i
+) 
+(31) where p(i) represents the probability of selecting satellite i. During inference, the satellite with the highest probability is selected,  subject to the feasibility mask which ensures that only valid satellites can be chosen.
+5.4.2. Task selector
+The task selector determines the most appropriate task (either an observation target or a ground station) for the selected satellite. It  employs a unified selection mechanism that processes both observation targets and station candidates through the same architecture,  enabling flexible decision-making across different operation types.
+Given the selected satellite’s state hS
+ and the combined task i
+ 
+ features Htask 
+ 
+= [h T ; h
+ 
+ G], the selector first applies multi-head attention  to capture the relevance between the satellite and potential tasks: c task i
+= MultiHeadAttn (hS i, H task , H task )
+(32) where ctask
+  represents the context vector that encodes the i
+ 
+ satellite-specific task information for satellite i. 
+The context vector is then expanded and concatenated with the original task features to form combined representations: h combined j|i
+= [Htask j
+; ctask i
+] 
+(33)
+The combined features are processed through a fusion network to capture the interactions between target features and contextual  information: h fused j|i
+= FFN(h combined j|i
+) 
+(34)
+Finally, the selector generates selection probabilities through a scoring network: p(j|i) = softmax(W scoreh fused j|i
+) 
+(35) where p(j|i) represents the probability of selecting task j given that satellite i has been chosen. The selection is subject to a feasibility  mask that ensures only valid tasks (considering resource constraints and operational requirements) can be chosen.
+5.4.3. Feasibility mask mechanism
+To ensure valid scheduling decisions, UHTS-DRL employs a two-level feasibility mask mechanism that dynamically filters infeasible  options at each decision step.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Satellite Selection Mask: At the first level, satellites are evaluated based on whether their current time t i exceeds the planning  horizon H. The  m sat i
+= 
+{ 
+1,  if t i < H 
+0,  otherwise
+(36) satellite selection mask is defined as:
+This ensures that only satellites within the operational timeframe remain selectable.
+Task Selection Mask: For satellite i selected at the first level, task-level masks are generated based on three operation types: 
+Observation tasks: A target j is selectable only if it simultaneously satisfies five conditions: m obs ij
+= I(o j= 0) ∧ I(ν ij> 0) ∧ I(μ j≤ m i ) ∧ I(δ j ⋅ E rate ≤ e i ) ∧ I(η ij< H) 
+(37) where I(⋅) is the indicator function, o denotes 
+ 
+  observation completion status, ν  represents the number of remaining observation win j ij dows, μ  is j
+ storage requirement, m  is available i
+ 
+  is i
+ 
+  memory, e remaining energy, and ηij
+  is the earliest executable time.
+-
+Ground stations: A station k is selectable when: m trans ik
+= I(n i> 0) ∧ I(κ ik> 0) 
+(38) where n indicates the number of stored observed tasks and denotes i
+ κik
+ 
+ 
+  the number of remaining transmission windows. 
+Virtual task: This option is activated only when all other choices are infeasible: m virtual = ¬
+(
+⋁ j m obs ij
+∨ 
+⋁  k  m trans ik
+) 
+(39)
+This ensures the scheduling continuity by allowing satellites to advance to the next period.
+Dynamic Mask Updates: Masks are recalculated at each decision step based on updated states. After action execution, the  transition function updates satellite resources (e ,i
+ m i
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ , ti ), task completion flags (o, and jc
+ ), relational states ( j
+ηij , νij , ζ, κik ). The ik  earliest executable time ηij
+  is particularly crucial for handling overlapping time 
+ 
+  windows. For each satellite–task pair, ηij
+ 
+ is computed as:
+η ij= min l∈W ij
+{ max(ti, tijl start) + τ(θ i , θ ijl (t)) 
+} 
+(40) ij where Wij
+  denotes available windows, tl
+  is start
+ the l-th window’s start time, and τ(θi
+ , θ ijl (t)) represents the attitude maneuvering time  from current angles θ 
+ 
+ to required angles θ 
+For 
+ (t) at execution time t.
+agile satellites, is time-dependent as the required i ijl
+ 
+ θij
+ l (t) 
+ 
+ 
+ 
+  observation attitude varies with orbital position.
+This formulation naturally addresses overlapping time windows by considering both temporal availability and time-dependent  attitude constraints. When multiple tasks have overlapping time windows, their distinct maneuvering requirements at different orbital  positions result in different earliest executable times, enabling accurate feasibility identification.
+5.5. Training algorithm
+To train our policy network efficiently, we propose Algorithm 1 which employs the REINFORCE algorithm with baseline. The  algorithm integrates multiple mechanisms including baseline reward estimation, entropy regularization, and statistical significance  testing.
+At each iteration, we first generate a batch of problem instances and construct solutions for them using the current policy network 
+π θ. For each solution construction, the baseline policy network computes a baseline reward using a deterministic greedy strategy. 
+The policy parameters are then updated using:
+∇ θJ(θ) = 1
+B
+B
+∑ b=1
+(Rb− R BL  b)∇ θ log π θ (a t |s t )
+(41) where B is the batch size, R is policy
+BL
+ the actual reward obtained by b
+ 
+ 
+ 
+ 
+ 
+π,
+θ
+ 
+ and R  is the b
+ baseline reward. The parameters are optimized using the Adam optimizer. To reduce variance further, the baseline policy is updated only when the current policy shows statistically  significant improvement according to a one-sided paired t-test with significance level α.
+6. Experimental results and discussions
+In this section, we conduct extensive simulation experiments designed to validate the efficiency of our proposed method through  comparisons with both heuristic and meta-heuristic approaches. Section 6.1 details the scenario settings, while Section 6.2 outlines the algorithm configurations. Comparative results for various task scales are presented in Section 6.3; the impact of different resource configurations is analyzed in Section 6.4; and the performance across various target distributions is illustrated  in Section 6.5.
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Algorithm 1: Training method.
+Input: Policy network π θ parameters θ; baseline network v φ parameters φ; number of epochs E; epoch size N; number of batches B, significance level α
+Output: Trained policy network
+1 for epoch = 1, 2, ..., E do
+
+Sample N problem instances randomly; 
+3 for each batch B do
+4 done = False; 
+5 while ¬done do
+
+Pick an action (i, j) ∼ π θ (a t |s t );
+
+Observe reward r t and next state s t ;
+8 if reach the terminate condition then
+9 done = True;
+
+R b = ∑  t r t ;
+
+GreedyRollout with baseline and obtain its reward R BL  b;
+
+∇ θJ(θ) = 1
+B
+B∑ b=1
+(R b − R BL b)∇ θ log π θ(a t |s t ); 
+
+θ ← Adam(θ, ∇ θ J (θ)) ;
+14 if OneSidedPairedTTest(π θ, v φ ) < α then
+
+φ ← θ ;
+To evaluate the performance of different algorithms, we employ the following metrics:
+• Completed Tasks: The number of tasks with both observation and transmission completed.
+• Task Completion Rate: The percentage of completed tasks, calculated as (Number of Completed Tasks / Total Number of Tasks)
+× 100%.
+• Total Profit: The sum of profits from all completed and partially completed tasks, where fully completed tasks receive full profit π j, while observed-only tasks receive partial profit w o  j⋅ π j .
+• Profit Rate: The percentage of maximum achievable profit obtained, calculated as (Obtained Total Profit / Maximum Total
+Profit) × 100%, where Maximum Total Profit represents the sum of all task profits in the scenario.
+• Relative Profit Improvement: The performance improvement of UHTS-DRL over baseline methods in terms of total profit, calculated as (Profit_UHTS-DRL - Profit_baseline) / Profit_baseline × 100%. 
+6.1. Simulation scenario setting
+The simulation scenarios are designed with a constellation consisting of six sun synchronous orbit satellites. The orbit parameters  are shown in Table 6. Five well-known ground stations within Chinese territory were selected, which are located in the south, west,  north, east and center of China. Each ground station is equipped with one antenna for receiving the data from satellites. In addition,  the scheduling period was set from 00:00:00 on September 22, 2024, to 12:00:00 on September 22, 2024, covering a planning horizon  of 12 h [30].
+To construct the training dataset, we randomly sampled 2000 target points within the latitude range of [−80 ◦ , 80 ◦ ] and longitude  range of [−168 ◦, 168 ◦]. For each target, the profit value was randomly assigned between 1 and 10, and the observation duration  was randomly set between 5 and 10 s. The observation time windows and transmission time windows can be pre-calculated using  either fast visibility algorithms [38,39] or the software Satellite Tool Kit (STK). During the training process, a batch of targets was
+Table 6 
+Orbit parameters for each satellite.
+Satellite parameters
+Satellite 1
+Satellite 2
+Satellite 3
+Satellite 4
+Satellite 5
+Satellite 6
+Orbit semi-major axis(km)
+7163.14
+7163.14
+7163.14
+7163.14
+7163.14
+7163.14
+Eccentricity( ◦ )
+0.00013
+0.00013
+0.00013
+0.00013
+0.00013
+0.00013
+Inclination( ◦ )
+98.5
+98.5
+98.5
+98.5
+98.5
+98.5
+True anomaly( ◦ )
+
+Argument of perigee( ◦ )
+
+RAAN( ◦ )
+172.85
+142.85
+112.85
+82.85
+52.85
+22.85
+Maximum maneuvering angle( ◦ )
+
+Angular velocity( ◦ ∕s)
+2.0
+2.0
+2.0
+2.0
+2.0
+2.0
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+randomly selected from this dataset for each training iteration. This sampling approach ensures sufficient diversity in the training  data to enhance the model’s generalization capability.
+First, we trained our UHTS-DRL model under three basic scenarios with 6 satellites and 5 ground stations, where the number of  targets was set to 20, 50, and 100 respectively. These three models served as our base models to evaluate the convergence capability  of our approach. After training, the model trained with 100 targets was used for testing across all experimental scenarios.
+To comprehensively evaluate the performance and generalization capability of our proposed approach, we designed three series  of experiments. First, we conducted scalability experiments by testing different task scales ranging from 20 to 400 targets while  maintaining 6 satellites and 5 ground stations, aiming to verify the algorithm’s ability to handle increasing problem sizes. Second, we  examined the impact of resource configurations by varying the number of satellites (4/5/6/7/8) and ground stations (3/4/5) while  fixing the number of tasks at 200; although our algorithm can scale to handle an arbitrary number of ground stations, we strategically  employed five real-world operational stations and tested with reduced configurations to validate performance under limited resource  scenarios. Finally, we investigated the algorithm’s adaptability to different spatial distributions of targets. The detailed experimental  configurations are shown in Tables 7–9.
+6.2. Algorithm setting
+The hyperparameters of UHTS-DRL are summarized in Table 10. We used different batch sizes for different problem scales: 256  for 20/50-target scenarios and 128 for 100-target scenarios. This adjustment is necessary due to GPU memory constraints, as larger  problem scales require more memory per instance for state representations and neural network computations. Reducing the batch size  for 100-target problems ensures stable training on the NVIDIA A100 GPU while maintaining sufficient samples for effective gradient  estimation. All other hyperparameters remained consistent across training scenarios.
+Table 7 
+Task scale scalability experiment configurations.
+Scenario
+Target number
+Satellite number
+Ground station number
+SCEN_1
+
+SCEN_2
+
+SCEN_3
+
+SCEN_4
+
+SCEN_5
+
+SCEN_6
+
+SCEN_7
+
+SCEN_8
+
+SCEN_9
+
+Table 8 
+Resource scalability experiment configurations.
+Scenario
+Target number
+Satellite number
+Ground station number
+SCEN_10
+
+SCEN_11
+
+SCEN_12
+
+SCEN_13
+
+SCEN_14
+
+SCEN_15
+
+SCEN_16
+
+SCEN_17
+
+SCEN_18
+
+SCEN_19
+
+SCEN_20
+
+SCEN_21
+
+SCEN_22
+
+SCEN_23
+
+SCEN_24
+
+Table 9 
+Spatial distribution experiment configurations.
+Scenario
+Distribution pattern
+Target region
+Description
+SCEN_25
+Uniform
+Global
+Targets uniformly distributed across [−80 ◦ ,80 ◦ ] × [−168 ◦ ,168 ◦ ]
+SCEN_26
+Clustered
+Three Clusters
+Three high-density regions with specified cluster centers
+SCEN_27
+Latitude-biased
+Low Latitude
+Higher target density between [−30 ◦ ,30 ◦ ] latitude
+SCEN_28
+Longitude-biased
+Eastern Hemisphere
+Higher target density in [0 ◦ ,168 ◦ ] longitude
+SCEN_29
+Mixed
+Global
+Combination of uniform background with two high-density clusters
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Table 10 
+Hyperparameter settings for UHTS-DRL.
+Parameter
+Value
+Attention heads 
+
+Hidden dimension 
+
+Number of epochs 
+
+Batch size (20/50 targets) 
+
+Batch size (100 targets) 
+
+Learning rate 
+0.0001
+Max gradient norm 
+
+Significance level 
+0.05
+Lower weight profit for observation task w o j
+0.2
+Fig. 4. The training convergence curve.
+We compared UHTS-DRL with several representative baseline algorithms: (1) Priority-based heuristic algorithm (PBHA) [40],  which schedules tasks based on their priority values; (2) Genetic algorithm (GA) [7] which encodes both task sequence and resource  allocation; (3) A two-phase genetic annealing algorithm (TPGA) [41]—all three originally designed for non-agile satellite scheduling  but modified to handle agile satellites by setting task start times to their earliest feasible times; (4) Large neighborhood search  algorithm (LNS) [42], which employs GA’s encoding scheme but uses random destruction and repair operators; (5) PBHA_adjust and 
+(6) GA_adjust [43], which incorporate task execution time adjustment mechanisms; and (7) A DRL method based on dual-decoder  architecture (DRL-DD) [30], originally proposed for data relay satellite network task scheduling, which we adapted to our unified 
+MDP formulation to handle the MSIODTSP.
+Before presenting the detailed experimental results, we first analyze the convergence behavior of UHTS-DRL compared with 
+DRL-DD. Fig. 4 shows the training curves under three different problem scales (20, 50, and 100 targets). Both methods exhibit  clear convergence patterns with rapid improvement in early training followed by stabilization. However, UHTS-DRL consistently  outperforms DRL-DD across all problem scales, with the performance gap becoming more pronounced as problem size increases. 
+Notably, UHTS-DRL maintains higher objective values throughout the training process and demonstrates more stable convergence  behavior with less fluctuation in later epochs. This superior performance demonstrates that our specialized LSTM-based time window  encoder and hierarchical dual-decoder architecture, designed specifically for integrated observation-transmission scheduling, are  more effective than the general-purpose dual-decoder framework adapted from relay satellite networks.
+6.3. Task size difference analysis
+We first evaluate our proposed method against baseline approaches across different problem scales. For comprehensive comparison, we conduct extensive experiments on 7 scenarios (SCEN_1 to SCEN_7) with target numbers ranging from 20 to 400, while  maintaining 6 satellites and 5 ground stations.
+Table 11 presents the detailed comparison results in terms of the number of completed tasks, task completion rate, total obtained  profit, profit rate and computation time. For small-scale problems (20-50 tasks), all algorithms demonstrate comparable performance  with minimal differences in total profit. However, as the problem scale increases, significant performance disparities emerge. UHTSDRL consistently outperforms all baseline algorithms across most medium and large-scale scenarios.
+Traditional algorithms demonstrate relatively stable performance but fail to capitalize effectively on the growing solution space  as problem complexity increases. In contrast, UHTS-DRL significantly outperforms the comparison algorithms in terms of solution  quality. Specifically, in SCEN_6, UHTS-DRL achieves a total profit of 810.8, exhibiting a 11.7% relative profit improvement over 
+TPGA and 12.5% over GA_adjust. Compared to the learning-based baseline DRL-DD, UHTS-DRL also demonstrates superior performance across all problem scales, with the advantage becoming more pronounced as problem size increases. Notably, the UHTS-DRL  method obtained superior solutions with remarkable computational efficiency, achieving a better balance between solution quality
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Table 11 
+Experimental results of different task sizes.
+Method
+Metric
+SCEN_1
+SCEN_2
+SCEN_3
+SCEN_4
+SCEN_5
+SCEN_6
+SCEN_7
+SCEN_8
+SCEN_9
+PBHA
+Completed Tasks
+
+Completion Rate (%)
+95.00
+86.00
+75.00
+47.33
+36.00
+29.20
+25.67
+22.00
+19.25
+Total Profit
+81.00
+222.00
+425.00
+548.60
+608.20
+630.40
+692.40
+710.80
+719.20
+Profit Rate (%)
+90.00
+88.80
+83.50
+68.59
+56.56
+47.55
+43.55
+38.01
+33.84
+Computation Time (s)
+0.02
+0.06
+0.13
+0.27
+0.35
+0.63
+0.53
+0.61
+0.71
+GA
+Completed Tasks
+
+Completion Rate (%)
+95.00
+86.00
+87.00
+76.00
+59.00
+50.00
+41.33
+35.71
+33.75
+Total Profit
+81.00
+223.00
+442.20
+630.20
+655.60
+663.40
+665.40
+727.60
+738.80
+Profit Rate (%)
+90.00
+89.20
+86.84
+78.85
+60.93
+50.04
+41.85
+38.92
+34.73
+Computation Time (s)
+10.44
+24.99
+59.96
+95.62
+127.69
+142.66
+177.55
+200.34
+304.81
+TPGA
+Completed Tasks
+
+Completion Rate (%)
+95.00
+86.00
+86.00
+59.33
+43.50
+37.20
+27.67
+24.86
+20.75
+Total Profit
+81.00
+222.00
+444.40
+617.40
+678.20
+725.40
+736.80
+782.80
+765.00
+Profit Rate (%)
+90.00
+88.80
+87.23
+77.22
+63.07
+54.72
+46.32
+41.86
+36.00
+Computation Time (s)
+48.66
+169.66
+217.29
+283.25
+343.41
+263.26
+252.28
+288.91
+282.35
+LNS
+Completed Tasks
+
+Completion Rate (%)
+95.00
+86.00
+77.00
+48.67
+37.00
+30.00
+26.33
+22.57
+19.75
+Total Profit
+81.00
+222.00
+429.40
+559.80
+621.20
+646.40
+707.60
+726.80
+737.00
+Profit Rate (%)
+90.00
+88.80
+84.28
+69.96
+57.77
+48.75
+44.49
+38.87
+34.64
+Computation Time (s)
+0.10
+0.24
+0.54
+2.11
+2.36
+0.73
+2.70
+3.73
+2.37
+PBHA_adjust
+Completed Tasks
+
+Completion Rate (%)
+95.00
+86.00
+74.00
+48.00
+37.00
+30.00
+24.67
+21.71
+19.00
+Total Profit
+81.00
+222.00
+424.60
+555.20
+622.20
+649.60
+669.80
+702.20
+715.00
+Profit Rate (%)
+90.00
+88.80
+83.30
+69.46
+57.86
+48.98
+42.10
+37.58
+33.65
+Computation Time (s)
+0.02
+0.06
+0.14
+0.23
+0.33
+0.40
+0.47
+0.60
+0.70
+GA_adjust
+Completed Tasks
+
+Completion Rate (%)
+95.00
+86.00
+86.00
+74.00
+62.50
+51.20
+43.00
+35.71
+32.50
+Total Profit
+82.80
+222.00
+449.40
+592.20
+666.20
+720.60
+721.60
+676.40
+741.20
+Profit Rate (%)
+92.00
+88.80
+88.21
+74.09
+61.95
+54.34
+45.37
+36.19
+34.87
+Computation Time (s)
+11.18
+28.37
+58.53
+154.66
+113.73
+138.47
+196.28
+300.69
+327.20
+DRL-DD
+Completed Tasks
+
+Completion Rate (%)
+95.00
+88.00
+87.00
+72.00
+58.00
+47.60
+40.00
+36.00
+31.75
+Total Profit
+82.80
+223.20
+446.60
+585.40
+658.40
+692.20
+723.60
+695.60
+743.40
+Profit Rate (%)
+92.00
+89.28
+87.66
+73.24
+61.22
+52.20
+45.50
+37.22
+34.97
+Computation Time (s)
+0.79
+0.99
+1.54
+2.36
+2.43
+2.87
+3.02
+3.13
+3.20
+UHTS-DRL
+Completed Tasks
+
+Completion Rate (%)
+95.00
+88.00
+88.00
+78.67
+59.00
+58.80
+50.33
+42.86
+33.50
+Total Profit
+82.80
+229.80
+459.80
+661.00
+687.80
+810.80
+839.60
+841.40
+785.20
+Profit Rate (%)
+92.00
+91.92
+90.33
+82.73
+63.98
+61.19
+52.84
+45.04
+36.95
+Computation Time (s)
+0.89
+1.13
+1.77
+2.42
+2.38
+3.08
+3.14
+3.29
+3.15 and computational efficiency. The superior scalability of UHTS-DRL can be attributed to its ability to learn effective scheduling patterns through reinforcement learning, which enables better generalization across problem scales and more efficient exploitation of  the expanded solution space in large-scale scenarios. From Fig. 5, the UHTS-DRL can consistently achieve higher total profit and  complete more tasks across different problem scales, and the advantage of the UHTS-DRL is also evident under large-scale problems  with 350 and 400 tasks.
+6.4. Resource scale difference analysis
+The experimental results across different resource configurations are shown in Fig. 6. The results clearly demonstrate the superior performance of the UHTS-DRL algorithm. UHTS-DRL consistently outperforms the baseline algorithms across most scenarios. 
+For example, when only 3 ground stations are available, UHTS-DRL achieves up to 53.28% profit rate with 8 satellites compared to 
+49.12%-52.19% for other methods. Compared to DRL-DD, UHTS-DRL also shows consistent improvements across all resource configurations. The performance gap between UHTS-DRL and baseline algorithms widens further as ground station resources increase. 
+Specifically, UHTS-DRL reaches 86.36% profit rate in the maximum resource configuration which contains 8 satellites and 5 ground  stations, demonstrating its adaptability to resource scaling.
+Fig. 6 also illustrates the trend of profit rate under different resource configurations. The profit rate shows a significant upward  trend as resources increase, with all algorithms benefiting from additional satellites or ground stations. For satellite scaling, profit rates  increase by approximately 20%-30% when moving from 4 to 8 satellites. Similarly, ground station scaling shows more improvements,  with profit rates increasing by 25%-35% when expanding from 3 to 5 ground stations for any fixed number of satellites. This pattern
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Fig. 5. Comparison of profits and number of tasks completed under different sizes of tasks.
+Fig. 6. Profit rate trends across various resource configurations.
+highlights the critical importance of ground station availability for maximizing system performance. To rigorously validate the relative  impact of satellite and ground station resources on system performance, we conducted a two-way analysis of variance (ANOVA) [44]  using the 15 resource configurations from SCEN_10 to SCEN_24 with profit rate as the dependent variable. Both factors exhibit highly  significant effects at the p < 0.001 level. Ground stations demonstrate a substantially stronger impact, with an F -statistic of 187.34  compared to 38.32 for satellites, confirming that ground station availability represents a more critical bottleneck in the integrated  scheduling problem (Table 12).
+6.5. Target distribution difference analysis
+To evaluate the adaptability of the proposed UHTS-DRL across varying spatial distributions of targets, we conduct a series of  experiments under five distinct target distributions. The target distributions are shown in Fig. 7. Specifically, in SCEN_25, targets are  sampled uniformly across latitudes [−80 ◦ , 80 ◦ ] and longitudes [−168 ◦ , 168 ◦ ]; in SCEN_26, they are organized into three regional clusters
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+Table 12 
+Two-way ANOVA results for resource configuration analysis.
+Source
+F p-value
+Partial η 2
+Satellite Count
+38.32
+<0.001
+0.95
+Ground Station Count
+187.34
+<0.001
+0.979
+Fig. 7. Different spatial distribution patterns of targets.
+Fig. 8. Comparison of profits and number of tasks completed under different target distributions.
+drawn from normal distributions with standard deviations of 10 ◦ in latitude and 15 ◦ in longitude. SCEN_27 introduces a latitude-biased distribution in which 70% of targets are placed within the equatorial band [−30 ◦ , 30 ◦ ], while the remainder are distributed globally. 
+In SCEN_28, 70% of targets are concentrated in the Eastern Hemisphere [0 ◦ , 168 ◦ ]. Finally, SCEN_29 employs a mixed configuration  consisting of a uniformly distributed background accounting for 60% of targets and two high-density clusters, each containing 20%  of targets sampled from normal distributions with latitude and longitude standard deviations of 8 ◦ and 12 ◦ , respectively.
+The experimental results are shown in Fig. 8. The results demonstrate that UHTS-DRL consistently achieves superior performance  across various geographical distributions, with total profits ranging from 666.40 to 866.80 and completed tasks ranging from 108 to 
+153. In contrast, baseline methods exhibit lower performance, with PBHA achieving profits from 608.20 to 712.20 and completed tasks  from 72 to 91, GA achieving profits from 634.40 to 725.00 and completed tasks from 114 to 133, and TPGA achieving profits from 
+634.40 to 733.20 and completed tasks from 81 to 95. Compared to DRL-DD, UHTS-DRL also demonstrates notable advantages across  different target distributions, achieving higher total profits in all scenarios such as 687.80 versus 658.40 in uniform distribution  and 866.80 versus 723.60 in latitude-biased distribution, while maintaining comparable or higher task completion numbers. This  consistent superiority across various geographical distributions proves the algorithm’s strong adaptability and reliability in satellite  task scheduling problems.
+7. Conclusion
+In this paper, we addressed the Multi-agile Satellite and Multi-ground Station Integrated Observation and Data Transmission 
+Scheduling Problem (MSIODTSP). We proposed a unified Markov Decision Process model that successfully integrates both observation  and transmission scheduling decisions. Based on the proposed MDP, we developed UHTS-DRL, an end-to-end framework that utilizes a  hierarchical neural network architecture with three key components: a time window encoder that processes time window constraints,  a state encoder capturing dynamic system states, and a two-stage scheduling decoder employing attention mechanisms for satellite  and task selection. Our comprehensive experiments demonstrated that UHTS-DRL consistently outperforms traditional scheduling
+Information Sciences 740 (2026) 123200 
+
+J. Cheng, M. Fan, Y. Gu et al.
+methods across various scenarios. The approach achieved superior performance, particularly in large-scale problems, with up to 
+12.5% relative improvement in profit rates. The results confirmed UHTS-DRL’s adaptability to different problem scales, resource  configurations, and geographical target distributions while maintaining computational efficiency.
+While our approach demonstrates strong performance, there remain opportunities for further refinement in several aspects. The  current framework adopts simplified modeling assumptions, including linear energy consumption dynamics, abstracted communication link characteristics, and a single-objective optimization formulation. For future research, we will extend UHTS-DRL to handle  more complex real-world constraints such as weather uncertainty, onboard processing capabilities and other dynamic disturbance  factors [37,45]. For extremely large-scale scenarios, we will explore multi-scale training strategies and curriculum learning to further  enhance generalization capability. We will also investigate multi-agent reinforcement learning approaches to enable decentralized  decision-making across satellite constellations, incorporate multi-objective optimization frameworks to balance competing objectives  such as profit maximization, energy efficiency, and mission fairness, and explore the application of our approach to heterogeneous  satellite constellations with varying capabilities and orbit types.

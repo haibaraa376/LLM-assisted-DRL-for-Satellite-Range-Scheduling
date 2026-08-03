@@ -92,9 +92,27 @@ def build_feedback_reward_prompt(
     validation_summary,
 ):
     """构造包含父候选表现和调权原因要求的后续轮Prompt。"""
+    validation_fields = (
+        "delivered_timeliness_raw_mean",
+        "completion_rate_mean",
+        "expiration_rate_mean",
+        "delivered_data_mbit_mean",
+        "load_balance_mean_per_task_mean",
+        "rejected_subaction_rate_mean",
+        "accepted_sgl_count_mean",
+    )
     feedback = {
-        "parent_training": parent_training_summary,
-        "validation": validation_summary,
+        "parent_training": {
+            "reward_diagnostics": parent_training_summary.get(
+                "reward_diagnostics",
+                {},
+            ),
+            "episodes_run": parent_training_summary.get("episodes_run"),
+        },
+        "validation": {
+            name: validation_summary.get(name)
+            for name in validation_fields
+        },
         "phenomena_to_review": [
             "协调冲突",
             "任务过期",

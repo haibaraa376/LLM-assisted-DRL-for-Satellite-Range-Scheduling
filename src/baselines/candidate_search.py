@@ -9,7 +9,8 @@ import os
 from pathlib import Path
 import time
 
-from mappo.evaluator import is_better_validation_result
+from mappo.evaluation_protocol import build_evaluation_protocol
+from mappo.model_selection import rank_validation_results
 from mappo.manual_reward import RewardFeatures, combine_manual_reward
 from mappo.trainer import parameter_vector
 
@@ -211,9 +212,20 @@ class CachedRewardGenerator:
         spec.save(call_dir / "reward_spec.json")
 
 
-def diagnose_reward_spec(spec, numerical):
+def diagnose_reward_spec(spec, numerical, manual_weights=None):
     """在训练前检查固定奖励方向、有限性和循环中继约束。"""
-    weights = reward_spec_weights(spec)
+    # 诊断必须使用训练时实际生效的归一化权重，而不是LLM原始尺度。
+    manual_weights = manual_weights or {
+        "sgl_progress": 1.0,
+        "relay_progress": 0.15,
+        "completion": 0.5,
+        "balance": 0.05,
+        "expiration": 0.5,
+        "invalid_action": 0.1,
+        "coordination_conflict": 0.03,
+        "relay_cost": 0.02,
+    }
+    weights = reward_spec_weights(spec, manual_weights)
     zero = RewardFeatures(*(0.0 for _ in range(8)))
     idle = combine_manual_reward(zero, weights, numerical).total_reward
     sgl = combine_manual_reward(
@@ -278,6 +290,27 @@ def diagnose_reward_spec(spec, numerical):
     }
 
 
+def assess_candidate_eligibility(training_summary, validation, config):
+    """根据完整Episode、守恒、SGL和奖励支配比例判定候选资格。"""
+    scenarios = training_summary.get("best_validation_scenarios", [])
+    checks = {
+        "full_episode": bool(scenarios)
+        and all(scenario.get("full_episode", False) for scenario in scenarios),
+        "data_conservation": bool(
+            training_summary.get("best_validation_data_conservation", False)
+        ),
+        "accepted_sgl": float(validation["accepted_sgl_count_mean"])
+        >= float(config["minimum_accepted_sgl_mean"]),
+        "reward_dominance": float(
+            training_summary["reward_diagnostics"][
+                "maximum_single_component_dominance"
+            ]
+        )
+        <= float(config["maximum_single_component_dominance"]),
+    }
+    return {"eligible": all(checks.values()), "checks": checks}
+
+
 def train_and_rank_candidates(
     candidates,
     baseline_config,
@@ -291,7 +324,11 @@ def train_and_rank_candidates(
     initial_critic = None
     search = baseline_config["methods"]["llm_ppo"]["search"]
     for candidate_id, spec in candidates:
-        diagnosis = diagnose_reward_spec(spec, mappo_config["manual_reward"]["numerical"])
+        diagnosis = diagnose_reward_spec(
+            spec,
+            mappo_config["manual_reward"]["numerical"],
+            mappo_config["manual_reward"]["weights"],
+        )
         candidate_dir = Path(output_root) / "candidates" / candidate_id
         candidate_dir.mkdir(parents=True, exist_ok=True)
         spec.save(candidate_dir / "reward_spec.json")
@@ -338,12 +375,9 @@ def train_and_rank_candidates(
         runner.training["base_episode_seed"] = int(
             search["common_training_seeds"][0]
         )
-        runner.training["validation"]["seeds"] = list(
-            search["validation_seeds"]
-        )
-        runner.training["validation"]["task_count"] = int(
-            search["validation_task_count"]
-        )
+        runner.training["validation"]["protocol"] = search[
+            "evaluation_protocol"
+        ]
         summary = runner.run(
             target_episode_count=runner.training["episode_count"],
             max_steps_per_episode=64 if smoke else None,
@@ -359,27 +393,27 @@ def train_and_rank_candidates(
                 "training_summary": summary,
                 "validation": summary["best_validation_result"],
                 "spec": spec,
+                "weight_metadata": trainer.reward_model.weight_metadata,
             }
         )
     trained = [item for item in results if item["status"] == "trained"]
     if not trained:
         raise RuntimeError("没有通过诊断并完成训练的LLM奖励候选")
-    tolerance = baseline_config["best_model_rule"]["primary_tolerance"]
-    best = trained[0]
-    for item in trained[1:]:
-        if is_better_validation_result(
-            item["validation"],
-            best["validation"],
-            tolerance,
-        ):
-            best = item
-    ranked = sorted(
-        trained,
-        key=lambda item: (
-            -item["validation"]["timeliness_raw_mean"],
-            -item["validation"]["load_balance_mean_per_task_mean"],
-        ),
+    eligibility = baseline_config["candidate_eligibility"]
+    for item in trained:
+        validation = item["validation"]
+        item["eligibility"] = assess_candidate_eligibility(
+            item["training_summary"],
+            validation,
+            eligibility,
+        )
+        item["rank"] = None
+    eligible = [item for item in trained if item["eligibility"]["eligible"]]
+    ranked = rank_validation_results(
+        eligible,
+        metrics_getter=lambda item: item["validation"],
+        rule=baseline_config["best_model_rule"]["metrics"],
     )
     for rank, item in enumerate(ranked, start=1):
         item["rank"] = rank
-    return results, best
+    return results, ranked[0] if ranked else None

@@ -121,6 +121,8 @@ class CrossDomainSatelliteRangeSchedulingEnv:
             for station_id in self.dataset.ground_station_ids
         }
         self.timeliness_raw = 0.0
+        # 旧指标继续累计全部成功链路；新增指标只累计真正送达地面的SGL。
+        self.delivered_timeliness_raw = 0.0
         self.accepted_total = 0
         self.rejected_total = 0
         return self._observations(), {"selected_task_ids": list(self.tasks)}
@@ -206,6 +208,7 @@ class CrossDomainSatelliteRangeSchedulingEnv:
             "idl_available": self.dataset.idl_available[matrix_index].copy(),
             "ground_station_states": self.ground_station_states,
             "timeliness_raw": self.timeliness_raw,
+            "delivered_timeliness_raw": self.delivered_timeliness_raw,
             "load_balance_raw": balance,
             "load_balance_mean_per_task": balance_mean,
             "mean_utilization_std": mean_std,
@@ -681,12 +684,15 @@ class CrossDomainSatelliteRangeSchedulingEnv:
             source_id = candidate["source_id"]
             target_id = candidate["subaction"].target_id
             duration = candidate["amount"] / candidate["rate"]
-            self.timeliness_raw += timeliness_contribution(
+            contribution = timeliness_contribution(
                 state.definition,
                 candidate["amount"],
                 candidate["start"],
                 self.time_tolerance,
             )
+            self.timeliness_raw += contribution
+            if candidate["link_type"] == "SGL":
+                self.delivered_timeliness_raw += contribution
             task_row = self.task_index[state.definition.task_id]
             source_index = self.dataset.satellite_index[source_id]
             self.outgoing_seconds[task_row, source_index] += duration
@@ -909,6 +915,7 @@ class CrossDomainSatelliteRangeSchedulingEnv:
                     "max_sgl_subactions": 1,
                 },
                 "timeliness_raw": self.timeliness_raw,
+                "delivered_timeliness_raw": self.delivered_timeliness_raw,
                 "load_balance_raw": balance,
             }
         return observations
@@ -962,6 +969,7 @@ class CrossDomainSatelliteRangeSchedulingEnv:
                 violation.SAME_SLOT_FORWARDING_NOT_ALLOWED,
             ),
             "timeliness_raw": self.timeliness_raw,
+            "delivered_timeliness_raw": self.delivered_timeliness_raw,
             "load_balance_raw": balance,
             "load_balance_mean_per_task": balance_mean,
             "mean_utilization_std": mean_std,

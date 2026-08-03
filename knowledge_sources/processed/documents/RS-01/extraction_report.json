@@ -1,0 +1,18 @@
+{
+  "page_count": 28,
+  "nonempty_page_count": 28,
+  "total_character_count": 9081,
+  "mean_characters_per_page": 324.32142857142856,
+  "replacement_character_ratio": 0.0,
+  "control_character_ratio": 0.0031934808941746504,
+  "repeated_line_ratio": 0.0,
+  "very_short_page_ratio": 0.0,
+  "technical_extraction_status": "approved_for_index",
+  "review_reason": "",
+  "references_removed": true,
+  "references_start_offset": 8833,
+  "appendix_detected": false,
+  "appendix_retained": false,
+  "appendix_character_count": 0,
+  "removed_sections": []
+}

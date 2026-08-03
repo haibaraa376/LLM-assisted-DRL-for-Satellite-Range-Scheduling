@@ -1,0 +1,410 @@
+Swarm and Evolutionary Computation 77 (2023) 101233
+Available online 11 January 2023
+2210-6502/© 2023 Elsevier B.V. All rights reserved.
+Contents lists available at ScienceDirect
+Swarm and Evolutionary Computation journal homepage: www.elsevier.com/locate/swevo
+Deep reinforcement learning method for satellite range scheduling problem
+Junwei Ou a, Lining Xing a,∗, Feng Yao a,1, Mengjun Li a, Jimin Lv a, Yongming He a, Yanjie Song a,
+Jian Wu a, Guoting Zhang b a College of Systems Engineering, National University of Defense Technology, Changsha, 410073, Hunan, China b Beijing Institute of Tracking and Telecommunications Technology, Beijing 100094, China
+A R T I C L E
+I N F O
+Keywords:
+Satellite range scheduling problem (SRSP)
+Deep reinforcement learning (DRL)
+Decompose
+Heuristic scheduling method
+A B S T R A C T
+The satellite range scheduling problem (SRSP) is a range of combinatory optimization, which plays a vital role in the regular operation and mission accomplishment of in-orbit satellites. However, with the increase in the number of satellites and the client requirements, there is some limitation in dealing with the SRSP for existing methods, especially on large-scale problems. Therefore, we propose a deep reinforcement learning (DRL) method, which is integrated into a heuristic scheduling method for the satellite range scheduling problem.
+The core idea of the algorithm is to decompose the problem into two subproblems: (1) Assignment problem, which assigns each task on different antennas. (2) Single antenna scheduling problem, which determines the execution start and end time of selected tasks on the antenna. The two subproblems are performed iteratively and modeled as a general paradigm. In the paradigm, the DRL is to determine the process of task assignment, and the heuristic scheduling method can quickly solve the single antenna scheduling problem. The objective function of the scheduling problem is to maximize the total reward. The DRL updates the gradient information based on the reward obtained by the heuristic scheduling method. To verify this idea, various scale experiments are considered to examine the performance of training scenarios. Experimental results show that the proposed paradigm combining DRL with a heuristic scheduling method can effectively deal with the SRSP.
+1. Introduction
+The communications between satellites and ground stations have received increasing interest in recent years [1]. In particular, communication in military and civilian missions plays a significant root in a variety of services. These services, including weather predictions, surveillance, geodesy, and navigation, need to be provided by satellites [2–4]. However, with the increase of satellites and the limitation of ground stations, scheduling satellites to service efficiently is becoming a challenging issue.
+The satellite range scheduling problem (SRSP) is the process of selecting appropriate ground station antennas and time windows [5] for satellites’ communication. SRSP was proposed by the Air Force Institute of Technology in [6]. The SRSP composes a set of satellite requests, a set of ground station antennas, and the visibility time windows of each request-antenna pair [7]. If a scenario only includes a single antenna, the problem is defined by single-resource range scheduling; otherwise, it is called multi-resource range scheduling. In the paper, the visibility time windows are provided by customers. The communication between
+∗Corresponding author.
+E-mail addresses: junweiou@163.com (J. Ou), xinglining@gmail.com (L. Xing), yaofeng@nudt.edu.cn (F. Yao), mjli11260744@sina.com (M. Li), zealousis@163.com (J. Lv), heyongming14@nudt.edu.com (Y. He), songyj_2017@163.com (Y. Song), 1551699723@qq.com (J. Wu), zhanggt_beijing@126.com
+(G. Zhang).
+1 Co-first authors.
+satellite requests and ground station antennas must be done within the range of visible windows. An antenna only supports a satellite request at a visible time window [8]. When an antenna is communicating with a satellite, it may or not allow for interruption due to a highpriority request. Furthermore, there are numerous constraints in the
+SRSP, which include a fixed turnaround time for supporting successive satellite requests.
+The SRSP is a typical NP-hard combination problem [9,10], which schedules ground stations on satellites to satisfy some constraints efficiently. Moreover, with the increase in resources and the mission, settling large-scale SRSP and providing efficient customer service is becoming challenging. Thus, some deterministic algorithms [11,12] for SRSP were proposed. These deterministic algorithms can find a set of optimal solutions under simple constraints. However, multiple constraints and large scale of tasks and antennas make it difficult for these algorithms to find optimal solutions. The population-based algorithms can handle highly complex constraints and obtain a set of approximate solutions in a relatively short period. Compared with https://doi.org/10.1016/j.swevo.2023.101233
+Received 30 July 2022; Received in revised form 2 December 2022; Accepted 1 January 2023
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+deterministic algorithms, population-based algorithms are effective in dealing with SRSP. Thence, these algorithms have been widely accepted as a tool for SRSP. But, providing fast and reliable solutions is still a challenging task for population-based algorithms. Therefore, it is necessary to design an efficient algorithm to deal with SRSP.
+Deep reinforcement learning (DRL) has recently attracted much attention from researchers in the field of combinatorial optimization.
+Most of the research makes use of DRL to learn the searching rules, including the traveling salesman problem (TSP) [13], job-shop scheduling problem (JSP) [14], and vehicle routing problem (VRP) [15]. The model of DRL is trained by the trial-and-error process and can be regarded as a black-box heuristic, which is obtained by training the characteristic of the problem [16]. By the trained network, the optimal solutions can be obtained in a very short time. In addition, there is a strong generalization ability in the trained DRL model, which can solve the problem of unexplored characteristics [17].
+In the study, SRSP is first decomposed into two subproblems, i.e., an assignment problem and a single antenna scheduling problem. Then, the DRL method determines tasks to be assigned to different antennas, while a heuristic scheduling method obtains a scheduling plan for each antenna. Hence, each antenna can solve the SRSP by a range of subproblems. The main contributions of this paper are summarized as follows:
+(1) A general paradigm composed of a DRL and a heuristic scheduling method is developed to deal with the SRSP. In the paradigm, the SRSP is modeled into two subproblems solved by two different technologies.
+(2) In order to learn the characteristics of the satellite mission, the
+DRL-based method is modeled and decides the process of task assignment.
+(3) In order to verify the performance of the proposed algorithm, we consider some scenarios. Experimental results show that the proposed paradigm can outperform other algorithms in dealing with the SRSP.
+This paper is organized as follows. Section 2 reviews existing studies on the SRSP and technologies. Section 3 provides a preliminary for the
+SRSP. Section 4 presents the proposed algorithm in detail. Section 5 gives experimental results and a comparison of the algorithm to other algorithms. Finally, a conclusion is shown in Section 6.
+2. Literature review
+SRSP is a class of combinatorial optimization problems that have received much attention in recent years. The research of SRSP is of great importance in major national projects and national defense construction. An increasing amount of optimization methods are considered to solve the SRSP. The optimization methods for SRSP can be divided into three categories: deterministic algorithms, populationbased algorithms, and machine learning algorithms. In this section, we mainly review the three methods.
+(1) deterministicalgorithms: The deterministic algorithms can guarantee the optimal solution under certain assumptions by mathematical programming approaches, such as branch and bound [12,18], tree search [19,20], dynamic programming [21,22]. When the scale of the problem is large, the exact algorithm can provide a solution to the problem on the one hand and an initial solution for the heuristic method; on the other hand, a better solution can be searched. Due to the high computational cost of the exact algorithm, it is difficult to use in large-scale practical problems. For example, Barulescu et al. [23] proposed a heuristic method for actual SRSP. Luo et al. [5] proposed a combination of relaxation and heuristics to obtain a more accurate upper bound for the SRSP. Marinelli et al. [24] developed a Lagrangian version of the Fix-and-Relax MIP heuristic. Chen et al. [25] used an improved adaptive large neighborhood search algorithm for SRSP.
+Although it has a better result according to the experimental analysis, the cost of the method is time-consuming [5]. The solution time of the exact solution algorithm for large-scale problems is difficult for users to accept [24,26].
+(2) population−basedalgorithms: The population-based algorithms can obtain an approximation solution by meta-heuristic approaches, such as genetic algorithm (GA) [27,28], ant colony optimization (ACO)
+[29,30], and particle swarm optimization (PSO) [31]. These heuristic approaches, which work with a population of solutions, have been widely accepted as a major tool for solving SRSP. Compared with the deterministic algorithms, these meta-heuristic approaches are able to obtain a set of approximation solutions at a lower computational cost. The research of these meta-heuristic approaches [27,29] has been considered promising to solve SRSP. For example, Deb et al. [32] proposed a pareto-based evolutionary algorithm for improving the population convergence and diversity by a non-dominated sorting and a selection strategy, respectively. The Pareto-based evolutionary algorithm has been applied to various areas including the combinatorial optimization problem. Song et al. [33] proposed a multi-objective optimization for the SRSP based on the STK simulation. Li et al. [34] proposed an improved genetic algorithm by using site coding for SRSP.
+Du et al. [35] proposed a general multi-objective optimization evolutionary algorithms (MOEA) based memetic algorithm framework for multi-objective SRSP. Song et al. [36] proposed an improved genetic algorithm with the neighborhood search for SRSP. In [33–36], they use a population-based evolutionary algorithm to optimize the SRSP for obtaining a set of solutions. The research mainly designs some variation operators (e.g., crossover and mutation) to reproduce new representations. Zhang et al. [37] proposed a two-stage update pheromone
+ACO algorithm to solve the satellite resource scheduling problem. Peng et al. [30] considered a remote satellite scheduling problem and solved it by ACO. Zhang et al. [29] proposed an improved ACO with the bounds, update, and initialization of pheromones to deal with the SRSP.
+Chai et al. [38] proposed a double ACO for scheduling the imaging and the data transmission requests by designing an independent set model.
+(3) machinelearningalgorithms: Machine learning (ML) is one of the most salient techniques in many applications, and provides a powerful tool for extracting useful and hidden patterns from a big dataset.
+Many ML-based meta-heuristics achieve high-quality results in solving various complex optimization problems. Research in applying ML to solve combinatorial optimization problems has become increasingly popular. ML can be divided into two categories: unsupervised learning and supervised learning. The most common ML tasks include classification, regression, and clustering. Classification and regression are supervised ML task that needs a set of labeled data, while clustering is unsupervised learning that does not require labeled data. In the combinatorial optimization community, it is difficult for us to find a set of optimal solutions as labels for training a model. Hence, we often use unsupervised learning, such as DRL, to deal with combinatorial optimization problems. DRL has been employed to address SRSP due to the success of DRL in solving TSP [13], VRP [39,40]. Although the training of DRL needs to consume much time, obtained the trained neural network model can directly provide high-quality solutions in a relatively short time. For example, Vinyals et al. [41] proposed a pointer network model, which is a supervised learning model to solve
+TSP. Since the supervised learning model requires a large number of labels, it was extended to DRL [13,42]. Li et al. [43] proposed a DRL method integrating self-attention in both the encoder and decoder for heterogeneous capacitated VRP. He et al. [44] proposed a finite Markov decision process model based on a constructive heuristic algorithm for satellite scheduling problems. Wei et al. [45] proposed a deep reinforcement learning and parameter transfer-based approach for satellite scheduling problem in a non-iterative manner. An encoder–decoder structure neural network is applied to the deep reinforcement learning procedure for producing a high-quality solution.
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+Fig. 1. Illustration of SRSP.
+3. Preliminaries
+In this section, we mainly introduce the SRSP description, the mathematical model of the SRSP, model process using the form of DRL.
+3.1. Problem description
+The SRSP refers to the process of satellite data reception and command annotation after the satellite and the ground station establish a communication link when the satellite flies over the ground station.
+During a period, the satellite orbits the earth to reach the ground station multiple times to form various visibility time windows. The goal of
+SRSP is to establish a satellite-to-ground station antenna connection within a visible time window. The visible time windows need to be assigned to different request tasks to satisfy the satellite requests. As shown in Fig. 1, two satellites can connect with a ground station, but a ground station antenna can only establish a connection with one satellite at a time. Hence, the main goal of SRSP is to allocate visible time windows to satellites reasonably.
+3.2. Mathematical model
+For the SRSP, a satellite mission consists of a set of Tasksand a set of Timewindows, and then each task is allocated a visible Timewindow.
+Data∶
+Let Abe the set of ground antennas. Let Rbe the set of satellite tasks. There are Ntasks in total. For each task r∈R, it can be presented by the tuple of (pr, or, ar, br,a, er,a, sr, tr).
+(a) pr: the profit of task r∈R; There is a bigger value of prindicating that the profit of task ris higher.
+(b) or: the service of task r∈R; A task can perform different services, such as tracking, uplink, reception and ranging session.
+(c) ar: the antennas supporting task r∈R; A task can be supported by several antennas.
+(d) br,a: the beginning time of the task r∈Ron visibility window for antennas a∈ar.
+(e) er,a: the ending time of visibility window on the request r∈R for antennas a∈ar.
+(f) sr: the service time of the task r∈R.
+(g) tr: the turnaround time of the request r∈R.
+In addition, sadenotes that the antenna a∈Acan support several services. Variables∶
+Let xr,abe 1 when request r∈Ron antenna a∈Ais scheduled, otherwise xr,a=0.
+Let yr,apresent the start time of request r∈Rwhen the request ris performed in the antenna a∈ar. Objective∶
+The SRSP requests not only the maximum number of scheduled tasks but also the maximization of the profit of the scheduled task. In practice, when a task i∈Ron the antenna jis scheduled, xijwill be set 1. Otherwise, it will be set 0. In order to optimize the problem, the mathematical model is defined as follows:
+Max
+N
+∑ i=1
+M
+∑ j=1 xijpi,
+(1) where Mrepresents the number of antenna. Constraints∶
+∑ a∈ar xr,a≤1
+(r∈R),
+(2) br,a≤yr,a≤er,a
+(r∈R; a∈ar),
+(3) yr,a+ dr+ tr≤yq,a
+(r, q∈R),
+(4) sr⊂sa
+(r∈R; a∈A),
+(5)
+The constraint (2) indicates a task can be allocated to at most one antenna. The constraint (3) indicates each task must be performed within the available time windows at a ground station. The constraint
+(4) indicates an antenna cannot overlap more than a request at the same time. The constraint (5) indicates the antenna must support the service of the task.
+Furthermore, some assumptions need to be done for developing analysis.
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+Fig. 2. A schematic diagram of the satellite range scheduling.
+1. The shift time of tris a constant.
+2. The task cannot stop once it is performed.
+3. The time frame we plan is within the scope of the determination.
+3.3. Modeling process
+The process of solving the SRSP can be realized in two parts. First, each task in all requests is allocated an antenna according to the antenna’s support relationship. The process can be viewed as a task assignment. Then, all tasks in each antenna are set to the visiting order according to the beginning time of the task. By the two processes, tasks can be determined based on the antenna being performed and its start and end times. The diagram of scheduling SRSP is presented in Fig. 2.
+Each satellite task is assigned to a specific antenna using the DRL-based method. For the satellite missions on an antenna, the tasks are ranked based on their profit values, and a scheduling plan can be obtained by eliminating possible conflicts. The scheduling plan is introduced in
+Section 4.4. For the process of the task assignment, we use DRL to guide the selection. The DRL has been applied to many combinatorial optimization problems, such as TSP [13] and VRP [43]. In this paper, we model the process of the task assignment as a Markov decision process (MDP) defined by 4-tuple M= {S, A, τ, r}. Importantly, the state space S, the action space A, the state transition rule τ, and the reward function rare introduced as follows:
+State∶In our method, the state st∈Scontains two different states, which are the task state RTt, and the antenna Ant. For the antenna state Ant, it describes the situation of antennas at the ith time step.
+The state Antis expressed as Ant= {an1 t, an2 t, ..., anm t}= {(o1 t, G1 t), (o2 t,
+G2 t), ..., (om t, Gm t) }, where oi trepresents the relationship of the antenna to support request tasks and it does not change over time. Gi trepresents the tasks to be visited by the antenna and it will change over time. The task state RTtis expressed as RTt= {RT1 t, RT2 t, ..., RTm t} = {(p1 t, b1 t, e1 t, s1 t, ta1 t), ..., (pm t, bm t, em t, sm t, tam t) }, where p1 t, b1 t, e1 t, s1 tand ta1 tindicate the profit, the beginning time, the ending time, the service time and the turnaround time, respectively.
+Action∶The action in the method is to select a task and an antenna, which can be regarded as selecting an antenna for a task. The action at
+∈Ais treated as (ri t, anj t), that is the task riwill be assigned to the anj.
+Fig. 3. The illustration of the general framework.
+Transition∶By the transition rule τ, the next state st+1 is obtained based on the actions atas well as previous state st, that is, st+1 = τ(st).
+The state RTt+1 is updated as follows:
+Gk t+1 =
+⎧
+⎪
+⎨
+⎪⎩
+[Gk t, rtj] if k= j,
+[
+Gk t, gj t
+] otherwise,
+(6)
+Reward∶The reward is used to compute the profit of tasks. The maximum reward represents a better result. Then, the reward in steps tand t+ 1 is defined as follows: rt+1 = r(st+1, at+1) = pri,
+(7) where priis the profit of selecting the task i.
+4. The proposed algorithm
+In the section, we use the DRL-based method to assign tasks to different antennas. We select an attention-based neural network for the
+DRL to train the policy. Moreover, we introduce the training process and a constructive heuristic algorithm.
+4.1. General framework
+The selected DRL-based method is to learn a stochastic policy
+πθ(at|st), which minimizes the loss objective. To do this, we use a deep neural network to train the parameter θ. First, the initial state s0 represents the initial stage where tasks will be assigned to the antennas. Then, we use the πto form a task assignment scheme until the terminate state θτis satisfied. Thus, the probability chain rule is calculated as follows: p(sτ|s0) =
+τ−1
+∏ t=0
+πθ(at|st)p(st+1|st, at),
+(8) where τis the number of all steps.
+In order to elaborate on the general framework, we provide a simple example to illustrate the process in Fig. 3. First, the input data, including tasks and antennas, is encoded into a feature space for better representation with raw features in the first step (t=0).
+Its output is a vector that remains unchanged over time. Then, the policy selects an antenna (anj) from all the antennas according to the antenna decoder selection. Next, based on the antenna index identified
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+by the antenna decoder selection, the policy selects the appropriate tasks that the antenna can support via the task decoder selection. After the mission assignment, we will do a mission scheduling for the mission on that antenna. The constructive heuristic algorithm we chose for the scheduling is presented in Section 4.4. Finally, the state stis updated based on the action atconstructed by the selected antenna anjand task ri. By the way, we can determine the assignment scheme of all tasks on which the tasks of an antenna are performed and generate a scheduling plan for using users.
+4.2. Architecture of policy network
+We follow an encoder–decoder structure for the architecture, as shown in Fig. 3. The structure includes an encoder and two decoders.
+The encoder of our method uses a multi-decoder attention model [46] composed of a task selection decoder and an antenna selection decoder.
+Afterward, we are concerned with the detail of the encoder, task selection decoder, and antenna selection decoder, respectively.
+Encoder∶Since the features in the task need to be extended rational and have broader characteristics. The encoder is used to enrich the information for the antenna selection decoder. First, the features of each task, that is, ̃xi= (oi, pi, bi, ei, si, ti), are mapped into a higherdimensional space using a linear projection (dh= 128 in the paper).
+Then, the Transformer-style model based on the multi-head attention
+(MHA) mechanism and a feedforward (FF) sublayer is followed for better feature extraction. By the way, the hi
+0 linearly projected by ̃xi is encoded into hi
+Nbased on Nattention layers. In the paper, the multi-head attention layers are defined as follows:
+Ql,y, Kl,y, Vl,y= hlWQ l,y, hlWK l,y, hlWV l,y,
+(9)
+Zl,y= softmax
+( Ql,yKT l,y
+√ dimk
+)
+Vl,y,
+(10)
+MHA(hl) = MHA(hlWQ l, hlWK l, hlWV l)
+= Concat(Zl,1, Zl,2, ... , Zl,Y)WO l,
+(11) where hl= (h0 l, h1 l, ..., hn l) is the dim-dimensional embedding for the task; WQ l, WK l
+∈RY×dim×dimk, WV l
+∈RY×dim×dimvand WO l
+∈Rdim×dimk are learnable parameters in layer l; dimk= (dim∕Y) is the query/key dimension and dimv= (dim∕Y) is the value dimension; dim= 128 is the dimension in a high-dimensional space; Y=8 is the number of heads in the attention.
+Then, the following embedding hl+1 is obtained by the two strategies, which are consisted of the skip-connection and a batch normalization (BN) layer. The core of the two strategies is defined as follows: ri l= BN(hi l+ MHAi(hl)),
+(12) hi(l+ 1) = BN(ri l+ FF(ri l)),
+(13)
+AntennaselectionDecoder
+∶The role of the antenna selection decoder is to select an antenna according to the probability distribution implemented by two embeddings: antenna feature embedding and task feature embedding.
+First, the antenna features context CV tat step tis defined as follows:
+CV t= [Gt−1],
+(14) where Gt−1 denotes the supporting tasks by the current antenna. To fully extract the antenna feature context, it needs to be linearly projected with the parameters W1 and b1. Then it is integrated into the next feature embedding Htby the 512-dim FF layer with the ReLU activation function. The process is calculated as follows:
+HV t= FF(W1CV t+ b1),
+(15)
+Then, the task feature context CE t at time tis defined as follows:
+CE t= [h1 t, h2 t, ... , hm t],
+(16)
+The feature needs to extract more context in a similar way as mentioned above: the linear projection with trainable parameters W2 and b2 and a 512-dim FF layer. The way can be calculated as follows:
+HE t= FF(W2CE t+ b2).
+(17)
+Moreover, the two features, including the antenna feature embedding HV t and task feature embedding CE t are merged into a new feature that is linearly projected by the parameter W3 and b3. Then, the probability of selecting the next antenna at time step tis calculated as follows:
+Ht= W3[HV t, HE t] + b3,
+(18) pt= softmax(Ht)
+(19) where the softmax function is used to normalize Ht. Note that the method of retrieving the maximum probability greedily selects the next antenna.
+TaskselectionDecoder∶After selecting an antenna by the antenna selection decoder, the task selection decoder considers these tasks that can be supported by the selected antenna. We aim to learn a probability distribution ptto assign the corresponding task that is to be visited by the antenna. First, we defined a feature context Hc tcomposed of feature vector ̂hnand current task embedding hi t−1 as follows:
+Hc t= [̂hN, hi t−1],
+(20) where ̂hN=
+1 n
+∑ i∈Xhi
+N. Then, the context Hc tand the embedding hNare fed into an MHA layer. The MHA layer is similar to the one mentioned above for better feature extraction and is defined as follows:
+̂Hc t= MHA(Hc tWQ c, hNWK c, hNWV c)
+(21) where WQ c, WK c and WV c are training parameters. Then, we compute the probability of all tasks at time tas follows: ut= C⋅tanh
+( qT tkt
+√ dimk
+)
+,
+(22) where qt=
+̂Hc tWQ compand kt= hNWK compare training parameters and
+Cis set to 10. As a result, the probability of selecting a task for the antenna at time tis calculated as follows: pt= softmax(ut)
+(23)
+4.3. Training process
+Algorithm 1 proposed Algorithm
+Input: initialized parameters θ;
+The set of positive samples for current batch, Pn;
+The set of unlabeled samples for current batch, Un;
+Ensemble of classifiers on former batches, En−1;
+1: for each iter= 1, 2, ... do
+2: generate Nproblem instances randomly;
+3: for each i= 1, 2, ..., Mdo
+4: a batch b= Ni
+5: while not terminated do
+6: select an action at,b∼πθ(at,b|st,b) ;
+7: obtain a reward rt,band update next state st+1,b;
+8: end while
+9:
+Rb= ∑τ t=0 rt,b;
+10:
+GreedyRollout with baseline vφand compute its reward RBL b;
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+11: dθ←−1
+B
+∑B b=1(Rb−RBL b)∇log πθ(sτ,b|s0,b);
+12:
+θ←Adam(θ, dθ);
+13: end for
+14: if OneSidedPairedTTest(πθ, vφ) < αthen
+15:
+φ←θ
+16: end if
+17: end for
+The model is trained using the policy gradient method similar to [43], as presented in Algorithm 1. Using the technique consists of two networks. First, a policy gradient network πθis used to select an action and give the probability for the antennas and tasks; Then, a baseline network vφis a greedy roll-out baseline, which evaluates the reward by selecting the antenna and task with maximum probability. During the training, we randomly initialize some parameters and generate Nproblem instances. For each instance, we compute the reward using the policy gradient in line 9. Moreover, RBL b is an expected reward conducted by a greedy roll-out of the baseline network in line 10. In order to update the parameters of the baseline network, a paired t-test on several instances is employed to verify the significant differences between the two parameters in line 15.
+4.4. Constructive heuristic algorithm
+Once the tasks are assigned to the antennas, a heuristic algorithm is needed to determine the order in which the tasks are performed on the antennas, and to determine the start and end times of the tasks. In the paper, we use an approach based on task profit sorting to deal with a single antenna scheduling problem. The pseudo-code of the heuristic algorithm is shown as Algorithm 2. The heuristic algorithm first sorts all the tasks to be planned according to the task profit. This method allows the tasks with the largest profit to be executed first, resulting in a better profit. If the task satisfies the constraints, we choose the earliest allowed start time for the task. Then, the task is then placed into the planned set. With this heuristic algorithm, we can determine the execution order and time window of the tasks.
+Algorithm 2 heuristic algorithm
+Input:
+A sequence of tasks T;
+Output: plan;
+1: Sort Tby the task profit in descending order.
+2: for each task in Tdo
+3: if the task tisatisfy all constraints then
+4:
+Schedule tasks on the earliest possible time window.
+5: plan←plan∪ti.
+6: end if
+7: end for
+5. Experimental design and analysis
+The experimental scenarios in the paper follow a series of Chinese satellites. Then, we use some algorithms to assess the performance of the proposed method.
+5.1. Test instance and satellite orbital parameters
+We design some test problems with task sizes of 50, 100, 150, and
+200. Each task scheduling period is 24 h. After pretreatment, each task can be served on one or multiple antennas with one or more visible time windows. All satellite tasks are randomly generated based on actual conditions. In this way, the performance of the algorithm can be better tested in combination with actual cases. For the task profit, we consider using an integer to describe the importance of the task that the user
+Table 1
+Satellite orbital parameters.
+Parameter
+LSA
+E
+I
+AP
+RAAN
+MA
+Value
+7141701.7
+0.000627
+98.5964
+95.5069
+342.307
+125.2658 provides. In the scenarios, we use an integer ranging from 1 to 10 to assign the profit value for each task.
+The tasks in the experiment were all generated from low earth orbit
+(LEO) satellites. The satellite orbit parameters include the length of the semi-major axis (LSA), eccentricity (E), inclination (I), the argument of perigee (AP), right ascension of the ascending node (RAAN), and mean anomaly (MA). The initial orbital parameters for the satellite are presented in Table 1.
+In the experiment, the data for all satellite tasks were generated based on ground station operational practices. In order to explain in detail how to generate the test instance, we provide a procedure referring to [5] as follows: step 1 Initialize the problem parameters.
+step 2 Generate nsatellite tasks one by one.
+step 2–1 Set the turnaround time of the ith task to 10 min, tr, and randomly generate a number from 10 to 20 as the service of rth task, sr.
+step 2–2 Randomly generate a number from 1 to 3 as the number of visible antennas of the ith task, mi. Randomly select mi visible antennas from mantennas as the visible antennas of ith task.
+step 2–3 Randomly generate mrintegers in the interval [1, 1440
+- tr- sr] as the beginning time of visible time windows between ith task and its visibility antennas. The ending time of visibility windows can easily be determined by the start time plus the service time.
+step 2–4 Randomly generate an integer from 1 to 10 as the task profit.
+step 2–5 Return the Step 2–1 to generate the next task until all tasks are completed.
+5.2. Parameter settings and compared algorithm
+First, the training instances are generated by random sampling, and the size of each iteration is 12800, and 256 batches are set for each iteration. In the experiment, we follow 30 iterations for all problem sizes to verify the effectiveness of our method, although more iterations can achieve better results. Then, the features of the tasks and antennas are encoded into a 128-dimensional high-dimensional space, and the dimension of the hidden layer is also set to 128-dimensional. In addition, we select the Adam optimizer to train the policy parameters with an initial learning rate 10−4 and decaying 0.995 per iteration for convergence.
+To verify the performance, we select five classical heuristic methods for comparison algorithms, including (1) GA [34], a basic genetic algorithm for combinatorial optimization problems; (2) LS [47], a construction heuristic algorithm based on the local search for solving
+SRSP; (3)tabu search (TS) [48], an efficient heuristic method for solving the combinatorial optimization problem. (4)knowledge-based genetic algorithm (KBGA) [49], a knowledge-based evolutionary algorithm for relay satellite system mission scheduling problem. (5)IRICGA [50], an individual reconfiguration based integer coding genetic algorithm for multi-satellites imaging scheduling problem. Furthermore, we adjusted the objectives and related settings of all contrasting algorithms so that they share the same objective as the proposed ones.
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+Fig. 4. Total reward of the first 30 episodes in different scenarios.
+Table 2
+CUP time spent on the training model and running.
+Scenarios
+Training CUP time
+Run CUP time task=50
+37 h 29 min 40 s
+4 min 29 s task=100
+130 h 52 min 2 s
+14 min 16 s task=150
+275 h 52 min 53 s
+30 min 26 s task=200
+520 h 37 min 37 s
+52 min 22 s
+5.3. Performance of applying DRL to SRSP
+(1) ConvergenceAnalysis: In this section, we mainly analyze the algorithms’ performance on different task scales. First, we provide the curve of total reward over the first 30 episodes in different scenarios in
+Fig. 4.
+It can be seen from Fig. 4 that the DRL algorithm can obtain better results on different task scales after being trained, implying that it can have many advantages in dealing with SRSP. In the early stage, the total reward of each episode rises sharply, indicating that the proposed algorithm can quickly respond to different scenarios in a shorter period of time. In the latter stages, the proposed algorithm can make use of the training information to achieve good stability. There is a possible reason for the result. The proposed DRL-based algorithm can deal with task allocation well, and a heuristic algorithm is used to find better solutions. The proposed DRL-based algorithm is integrated into the heuristic algorithm to enhance its search ability. As a result, the proposed algorithm can effectively deal with the SRSP.
+(2) TrainingTimeAnalysis: The section mainly discusses the training time of the model. Table 2 presents the training time and the running time obtained by the proposed DRL model in the different scenarios. As shown in Table 2, the model training takes a lot of time on different task scales. This means that the DRL-based method needs to spend much time on the training of the model. At the same time, the heuristic algorithm in the DRL also consumes some time. However, after model training, the algorithm can obtain a set of excellent solutions in a short time. Therefore, although the model training takes more time, a scheduling scheme can be quickly obtained once the model training is completed. In conclusion, it is acceptable to spend a lot of time training the model to get a schedule quickly.
+5.4. Analysis of algorithm performance
+This section investigates the efficiency of our DRL-based method against other methods. We provide a comparative experiment about the average reward of the six algorithms, where the best values obtained by one of six algorithms are highlighted in bold face. It can be seen from
+Table 3 that the RDL-based algorithm outperforms other algorithms on
+Table 3
+The average reward of the six algorithms.
+Scenarios
+DRL
+GA
+LS
+TS
+KBGA
+IRICGA task=50
+260.1
+254.3
+
+251.3
+255.9
+243.1 task=100
+483.2
+443.2
+259.1
+482.4
+456.4
+453.3 task=150
+650.5
+578.1
+367.5
+634.3
+615.2
+598.2 task=200
+730.2
+738.8
+458.0
+714.6
+812.9
+768.6
+Table 4
+Average Rankings of the algorithms (Friedman).
+MIGD
+Average ranking value
+Final rank
+DRL
+1.7532
+
+GA
+3.9654
+
+LS
+5.8989
+
+TS
+3.7500
+
+KBGA
+2.5233
+
+IRICGA
+3.1010
+3 the majority of the task scales. However, it performs slightly worse than
+GA, KBGA, and IRICGA for task = 200. For all problems of all scales,
+LS fails to show very promising performance. In addition, as the size of the task increases, the performance difference between the proposed algorithm and other algorithms is not significant. Clearly, there is only a marginal difference between all algorithms. Furthermore, the proposed
+DRL-based algorithm is slightly worse than other algorithms except for
+LS, when the task is 200. One possible explanation is that the selected heuristic method is not suitable for dealing with a single antenna scheduling problem. This is understandable because the heuristics used are relatively simple. Overall, the proposed DRL-based method has more advantages in dealing with SRSP than other algorithms.
+5.5. Study in the Friedman test
+To verify the effectiveness of the proposed method, the Friedman test [51,52] is used to investigate further significance between different results at the 0.05 significance level. Table 4 presents the statistical results of the Friedman test among the six algorithms under comparison according to the profit value of the scheduled task. As shown in Table 4, the proposed DRL-based algorithm ranks first in SRSP among the six algorithms. The results of the Friedman test show that the proposed
+DRL-based algorithm is a robust model in this scenario. Moreover, the proposed DRL-based algorithm can produce more promising solutions than other algorithms in the metric value obtained by the
+Friedman test. This shows that the proposed DRL-based algorithm is more efficient than other methods. In total, the RDL-based algorithm significantly outperforms the other algorithms by a clear margin in terms of the Friedman test. This means that the DRL-based algorithm may be helpful for handling SRSP.
+5.6. Discuss
+5.6.1. Study of different task scale
+To examine the effect of task scale on algorithms’ performance, experiments are carried out on SRSP with different task scales, and task scales are set to 75, 125, and 175, which present small, moderate, and big scales, respectively. Experimental results of three algorithms in different scenarios are presented in Fig. 5. It can be observed from Fig. 5 that the profit of the task increases with the size of the task. There is a significant difference in the results between the three algorithms on different task scales. When the task size is set to 175, the gap between the algorithms is relatively small. The reason is that as the size of the task increases, the number of related tasks increases. This can lead to a high failure rate of the task in big-scale tasks.
+Furthermore, we adopt another performance metric to investigate algorithms’ performance on different task scales. The performance metric is called the rate of total profit, which is proportional to the
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+Fig. 5. Average reward of three algorithms in different scenarios.
+Fig. 6. Profit rate of three algorithms under 75 task scale.
+Fig. 7. Profit rate of three algorithms under 125 task scale.
+total profit in the same task set. The rate of total profit is defined as follows: pr = tpst tptts × 100%,
+(24) where tpstdenotes the total profit of all scheduled tasks, and tptts denotes total profit of all tasks in the task set.
+The obtained results in three different scenarios about prmetric are presented in Figs. 6, 7, 8. It can be seen from Fig. 6 that the rate of total profit in the three algorithms is more than 90%. When the task
+Fig. 8. Profit rate of three algorithms under 175 task scale.
+Fig. 9. Average reward of six algorithms in different scenarios.
+size increases, the rate of total profit in three algorithms decreases. In addition, DRL significantly outperforms the other algorithms in terms of the prmetric. However, the gap in the prmetric becomes smaller when the task size increase. This means that all algorithms will face big challenges with the task size growing. In inclusion, DRL seems suitable for dealing with SRSP.
+5.6.2. More discuss
+In order to discuss the average reward of six algorithms in different scenarios, we provide an average reward of six algorithms in different scenarios in Fig. 9. It can be seen from Fig. 9 that the proposed DRLbased algorithm performs significantly better than other algorithms except for GA on the task = 200. Besides, the proposed DRL algorithm shows some appealing results on small-scale instances, implying the
+DRL-based method may be helpful for dealing with SRSP. However, when the task size is 200, the DRL-based method does not show promising results, and there is not much difference between them. This means the DRL-based algorithm has not much advantage in dealing with large-scale SRSP.
+6. Conclusion
+In the paper, we propose a deep reinforcement learning (DRL) method to deal with SRSP. According to the framework of DRL-based, the SRSP can be decomposed into two subproblems: the assignment problem and the single antenna scheduling problem, respectively. The proposed DRL-based algorithm solves the assignment problem, and the heuristic algorithm deals with the single antenna scheduling problem.
+It is concluded from the experimental comparison and analysis that the
+
+Swarm and Evolutionary Computation 77 (2023) 101233
+
+J. Ou et al.
+combination of DRL-based and the heuristic algorithm can effectively deal with SRSP.
+Although the DRL-based method produces encouraging performance on SRSP, it needs to be examined in a broader of SRSP, including largescale instances. Therefore, our future work will mainly study large-scale
+SRSP. In addition, we are considering using more machine learning methods, including DQN and transfer learning for SRSP. The reason is that the ML-based method can indeed improve the adaptability and solution performance of the algorithm.

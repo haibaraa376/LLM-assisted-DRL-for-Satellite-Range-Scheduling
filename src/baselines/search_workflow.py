@@ -14,7 +14,6 @@ from .llm_provider import (
     DeepSeekRewardGenerationProvider,
     MockRewardGenerationProvider,
 )
-from .llm_reward import reward_spec_weights
 from .llm_schema import default_mock_specs
 from .run_management import atomic_write_json
 
@@ -87,7 +86,7 @@ def run_reward_search(
                     )
                 else:
                     prompt = build_feedback_reward_prompt(
-                        reward_spec_weights(parent["spec"]),
+                        parent["weight_metadata"]["effective_weights"],
                         parent["candidate_id"],
                         parent["training_summary"],
                         parent["validation"],
@@ -107,7 +106,6 @@ def run_reward_search(
                 output,
                 smoke=smoke,
             )
-            parent = best
             serializable = [_safe_record(item) for item in round_results]
             rounds_stream.write(
                 json.dumps(
@@ -115,7 +113,9 @@ def run_reward_search(
                         "round": round_index,
                         "official_experiment": not smoke,
                         "candidates": serializable,
-                        "selected_candidate_id": best["candidate_id"],
+                        "selected_candidate_id": (
+                            best["candidate_id"] if best else None
+                        ),
                     },
                     ensure_ascii=False,
                 )
@@ -123,6 +123,11 @@ def run_reward_search(
             )
             rounds_stream.flush()
             all_results.extend(serializable)
+            if best is None:
+                raise RuntimeError(
+                    "本轮没有满足资格门槛的候选；完整轮次记录已写入"
+                )
+            parent = best
     selected_path = output / "selected_reward_spec.json"
     parent["spec"].save(selected_path)
     summary = {

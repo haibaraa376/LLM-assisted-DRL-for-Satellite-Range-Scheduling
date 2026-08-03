@@ -167,10 +167,23 @@ conda run -n satellite python scripts\train_baselines.py ^
 `run_manifest.json`、`run_summary.json`、`comparison.json`，以及各方法独立的
 日志和 Checkpoint。已存在的 Run 目录默认拒绝覆盖。
 
+模型选择使用运行时隔离协议：`reward_search` 与 `checkpoint_selection` 由
+150 个 validation 任务按 seed 2027 确定性分成两个互斥的 75 任务池，最终
+`test` 协议只读取完整 test 划分。上述池大小、seed 和任务数均为复现补充设置，
+不是论文公开参数。比较采用送达及时性、完成率、过期率、送达数据量、负载均衡、
+拒绝动作率的容差字典序；旧 `timeliness_raw` 仍保留全部成功链路的历史含义，
+新增 `delivered_timeliness_raw` 只统计成功 SGL 下传。
+
 LLM-PPO 默认只读取冻结奖励规范；规范缺失时立即失败，不会自动调用 API。
 只有显式使用 `--prepare-llm-reward` 或 `--refresh-llm-reward` 并选择
 `--llm-provider deepseek` 时才可能调用真实 API。程序会完整显示预算，且只接受
 交互终端输入精确的 `YES`；Mock Provider 无需确认。仓库不提供静默绕过确认的参数。
+
+## 第五天：RAPPO知识库
+
+知识库以 `knowledge_sources/RAPPO_第五天_知识库文献清单.xlsx` 的“文献清单”工作表为唯一元数据来源。先执行 `python scripts\organize_knowledge_sources.py` 生成 Dry Run 报告，确认全部实际 PDF 唯一匹配后才可加 `--apply`。原始 PDF 会保留，规范副本不会覆盖既有文件。
+
+RAPPO 与 LLM-PPO 的唯一区别是：RAPPO 在每次奖励候选生成前使用本地 CodeBERT 向量索引检索 Top-5 引文；LLM-PPO 始终无 RAG。正式 5×8 搜索尚未执行。PDF 的技术提取、第二次人工审核、索引构建和 Mock RAPPO 均必须在清单完整且匹配唯一后进行。
 
 确定性验证单个 Checkpoint 或刷新整个 Run 的比较结果：
 
@@ -182,3 +195,12 @@ conda run -n satellite python scripts\evaluate_baseline.py ^
 conda run -n satellite python scripts\evaluate_baseline.py ^
   --run-dir results\baselines\runs\<run_id>
 ```
+
+默认使用 `checkpoint_selection` 并更新普通 `evaluation.json` / `comparison.json`。
+最终测试必须显式加入 `--protocol test`，结果写入独立的
+`test_evaluation.json` / `test_comparison.json`，不会覆盖普通比较文件。
+
+LLM 权重规范原文和 `spec_id` 保持不变；训练前仅做 L1 尺度归一化，使八项
+有效权重之和与人工奖励一致。日志、摘要和 Checkpoint 会记录原始/有效权重、
+归一化因子及有效权重哈希。PPO-Lya 的四项势函数权重
+`0.45/0.35/0.10/0.10` 以及已过期未送达债务同样属于复现补充设置。

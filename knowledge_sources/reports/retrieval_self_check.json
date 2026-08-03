@@ -1,0 +1,247 @@
+{
+  "passed": true,
+  "query_count": 12,
+  "per_query_results": [
+    {
+      "query": "How can a reward discourage unnecessary inter-satellite relay and encourage final SGL downlink?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-02:34:55b9f0e02aef",
+        "SRS-08:31:90f99e0d1768",
+        "SRS-04:19:1e89aa45b023",
+        "RS-08:15:1fdb782fe27f",
+        "SRS-02:58:977d3b2924e1"
+      ],
+      "document_ids": [
+        "SRS-02",
+        "SRS-08",
+        "SRS-04",
+        "RS-08",
+        "SRS-02"
+      ]
+    },
+    {
+      "query": "How can reward design improve delivered timeliness and task completion rate simultaneously?",
+      "passed": true,
+      "chunk_ids": [
+        "RS-08:120:a8b5800e9377",
+        "SRS-01:33:349e72d5a910",
+        "RS-08:29:ba17945d6bc0",
+        "SRS-06:6:1a3b60451fd8",
+        "RS-07:106:6ef53996bd72"
+      ],
+      "document_ids": [
+        "RS-08",
+        "SRS-01",
+        "RS-08",
+        "SRS-06",
+        "RS-07"
+      ]
+    },
+    {
+      "query": "How should high-priority tasks close to expiration be handled?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-04:62:98009eb451ee",
+        "RS-08:99:38c95e53c858",
+        "SRS-04:13:67345ea0da31",
+        "SRS-05:32:04fdbf06bee7",
+        "SRS-08:11:a62fa9a05e05"
+      ],
+      "document_ids": [
+        "SRS-04",
+        "RS-08",
+        "SRS-04",
+        "SRS-05",
+        "SRS-08"
+      ]
+    },
+    {
+      "query": "How can ground-station resource conflicts be reduced?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-02:34:55b9f0e02aef",
+        "SRS-06:92:c8771e0f7327",
+        "SRS-12:17:d56f610f3480",
+        "SRS-02:0:223f5dd86076",
+        "SRS-04:14:263f758e4f80"
+      ],
+      "document_ids": [
+        "SRS-02",
+        "SRS-06",
+        "SRS-12",
+        "SRS-02",
+        "SRS-04"
+      ]
+    },
+    {
+      "query": "How can load balancing be encouraged without rewarding idle behavior?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-04:62:98009eb451ee",
+        "RS-08:141:daa997cf1f9d",
+        "RS-08:12:e38a5d75888e",
+        "RS-03:6:966c7696852c",
+        "RS-03:4:8475e39ddb33"
+      ],
+      "document_ids": [
+        "SRS-04",
+        "RS-08",
+        "RS-08",
+        "RS-03",
+        "RS-03"
+      ]
+    },
+    {
+      "query": "What happens when the coordination-conflict penalty dominates the total reward?",
+      "passed": true,
+      "chunk_ids": [
+        "RS-08:120:a8b5800e9377",
+        "RS-04:73:4f25197193c0",
+        "RS-08:18:2c97ba77ae43",
+        "SRS-08:11:a62fa9a05e05",
+        "RS-04:60:bc6fba8043b9"
+      ],
+      "document_ids": [
+        "RS-08",
+        "RS-04",
+        "RS-08",
+        "SRS-08",
+        "RS-04"
+      ]
+    },
+    {
+      "query": "How does excessive reward scale affect PPO critic learning and value loss?",
+      "passed": true,
+      "chunk_ids": [
+        "RS-08:120:a8b5800e9377",
+        "RS-08:99:38c95e53c858",
+        "RS-02:18:acbe49fe7771",
+        "SRS-01:2:f5e81c9a0948",
+        "RS-03:26:405cbc2ab781"
+      ],
+      "document_ids": [
+        "RS-08",
+        "RS-08",
+        "RS-02",
+        "SRS-01",
+        "RS-03"
+      ]
+    },
+    {
+      "query": "How can reward hacking be detected and reduced?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-04:62:98009eb451ee",
+        "RS-08:120:a8b5800e9377",
+        "RS-04:73:4f25197193c0",
+        "RS-08:99:38c95e53c858",
+        "RS-03:5:24a6adc76ed6"
+      ],
+      "document_ids": [
+        "SRS-04",
+        "RS-08",
+        "RS-04",
+        "RS-08",
+        "RS-03"
+      ]
+    },
+    {
+      "query": "How should a shared team reward be designed for cooperative multi-agent PPO?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-01:33:349e72d5a910",
+        "RS-08:127:04b4fb2aabe5",
+        "RS-03:27:334cccd7a6ab",
+        "RS-02:18:acbe49fe7771",
+        "RS-04:30:6be37e822a27"
+      ],
+      "document_ids": [
+        "SRS-01",
+        "RS-08",
+        "RS-03",
+        "RS-02",
+        "RS-04"
+      ]
+    },
+    {
+      "query": "How should task completion and task expiration differ in a potential function?",
+      "passed": true,
+      "chunk_ids": [
+        "RS-03:5:24a6adc76ed6",
+        "SRS-06:6:1a3b60451fd8",
+        "RS-04:30:6be37e822a27",
+        "RS-03:6:966c7696852c",
+        "RS-02:18:acbe49fe7771"
+      ],
+      "document_ids": [
+        "RS-03",
+        "SRS-06",
+        "RS-04",
+        "RS-03",
+        "RS-02"
+      ]
+    },
+    {
+      "query": "How should invalid actions and infeasible transmissions be penalized?",
+      "passed": true,
+      "chunk_ids": [
+        "SRS-04:62:98009eb451ee",
+        "RS-08:119:e6fd33aab17c",
+        "RS-02:18:acbe49fe7771",
+        "RS-02:44:b55fedd99748",
+        "RS-08:99:38c95e53c858"
+      ],
+      "document_ids": [
+        "SRS-04",
+        "RS-08",
+        "RS-02",
+        "RS-02",
+        "RS-08"
+      ]
+    },
+    {
+      "query": "How should automatically generated reward functions be evaluated and selected?",
+      "passed": true,
+      "chunk_ids": [
+        "RS-03:5:24a6adc76ed6",
+        "RS-07:106:6ef53996bd72",
+        "RS-07:14:cdf37cc9c080",
+        "SRS-01:32:1c1bda324d6b",
+        "RS-08:9:c101c4d8c8e3"
+      ],
+      "document_ids": [
+        "RS-03",
+        "RS-07",
+        "RS-07",
+        "SRS-01",
+        "RS-08"
+      ]
+    }
+  ],
+  "invalid_section_hits": 0,
+  "repeated_chunk_statistics": {
+    "maximum_query_frequency": 0.3333333333333333
+  },
+  "document_distribution": {
+    "RS-02": 5,
+    "RS-03": 8,
+    "RS-04": 5,
+    "RS-07": 3,
+    "RS-08": 16,
+    "SRS-01": 4,
+    "SRS-02": 4,
+    "SRS-04": 7,
+    "SRS-05": 1,
+    "SRS-06": 3,
+    "SRS-08": 3,
+    "SRS-12": 1
+  },
+  "category_distribution": {
+    "reward_shaping": 37,
+    "satellite_scheduling": 23
+  },
+  "mean_top5_overlap": 0.0,
+  "failed_rules": [],
+  "recommendations": []
+}

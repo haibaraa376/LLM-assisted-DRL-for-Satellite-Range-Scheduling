@@ -1,0 +1,460 @@
+MOEA based memetic algorithms for multi-objective satellite range scheduling problem
+Yonghao Du a, Lining Xing a,*, Jiawei Zhang b, Yingguo Chen a, Yongming He a,c a College of Systems Engineering, National University of Defense Technology, Changsha, 410072, China b College of Information Communication, National University of Defense Technology, Xi’an, 710106, China c Department of Electrical & Computing Engineering, University of Alberta, Edmonton, AB, T6R 2V4, Canada
+A R T I C L E I N F O
+Keywords:
+Satellite range scheduling
+Multi-objective optimization
+Memetic algorithm
+MOEA
+Local search
+Load-balance
+A B S T R A C T
+Satellite range scheduling plays a very important role in guaranteeing the normal operation and the real-time control of in-orbit satellites. Although there appears a stronger demand for multi-objective optimization of satellite monitoring departments, multiple scheduling criteria are rarely considered simultaneously. To address the multi-objective satellite range scheduling problem (MOSRSP), a general MOEA based memetic algorithm (MOEAMA) framework is proposed, which optimizes the failure rate of ground-satellite communication requests and the load-balance degree of remote-tracking antennas. Based on a novel decision model for MOSRSP, the conflictresolution and load-balance operators and the tabu search metaheuristic are designed to implement the local search operations in the MOEA-MA. Different types of the MOEAs, including the domination-based MOEAs, decomposition-based MOEAs and metric-based MOEAs are adopted to implement the evolutionary operations in the MOEA-MA. The highlight of this paper is the effective application of the MOEA-MAs to practical scheduling problems, where the two most concerning objectives are well addressed. The MOEA-MAs that adopt five wellknown MOEAs are given and examined by the Benchmarks problems. Computational results indicate that the
+MOEA-MAs outperform the original MOEAs in terms of the metrics of coverage, hypervolume and spacing, which show good performance and application prospect for the MOSRSP.
+1. Introduction
+Satellites are playing an irreplaceable role in our modern lives, along with major national projects and national defense construction. Recent decades have witnessed wide-ranging satellite applications in remote sensing, telecommunications, resource exploration, disaster early warning and military surveillance. All these applications need abundant and frequent communications between satellites and ground remote-tracking stations. These communications include but are not limited to satellite orbit measurement, commands upload, data download and maintenance operations, which are extremely important for the normal operation and applications of satellites. Therefore, a type of scheduling problem called satellite range scheduling problem (SRSP) is derived in order to ensure the satellite-ground communication requests and to improve their efficiency.
+SRSP is a resource scheduling problem similar to job shop scheduling, in which a set of ground remote-tracking resources should be assigned to support a series of satellite-ground communication requests. But differently, all the communications must be conducted within the satellite-ground visible time windows, hence the SRSP is usually provided with dual constraints in resources and time. The SRSP has been proven NP-complete [1,2] and often presents an oversubscribed character in engineering practices. For instance, in the U.S. Air Force Satellite
+Control Network (AFSCN), over 300 requests were supported by only 19 antennas in a typical day in 2003 [3], and there is no successful schedule involving all these requests until now. As early as the 1990s, Gooley [4] has developed a mixed integer programming model to solve the SRSP from the AFSCN. In his method, the low-altitude satellite communication requests are firstly addressed, and then the high-altitude satellite requests are scheduled as many as possible. This phased scheduling framework is able to reduce the problem size in the SRSP and improve the convergence speed but is inconducive to the exploration for global optima. To address this issue, Parish [5] proposed an order-based genetic algorithm called Genitor to globally optimize the SRSP and improved the results from the mixed-integer programming. As illustrated in the experimental reports of Barbulescu et al. [6,7], the Genitor also
+* Corresponding author.
+E-mail address: xinglining@gmail.com (L. Xing).
+Contents lists available at ScienceDirect
+Swarm and Evolutionary Computation journal homepage: www.elsevier.com/locate/swevo https://doi.org/10.1016/j.swevo.2019.100576
+Received 29 March 2019; Received in revised form 26 August 2019; Accepted 4 September 2019
+Available online 14 September 2019
+2210-6502/© 2019 Elsevier B.V. All rights reserved.
+Swarm and Evolutionary Computation 50 (2019) 100576
+ outperforms stochastic hill-climbing, squeaky-wheel optimization and heuristic-based stochastic sampling algorithms. So far, there appear many other new techniques for the SRSP, such as heuristic rules [8,9], graph colouring [10], local search metaheuristics [11,12] and evolutionary algorithms [13–15]. Song et al. [16] attempted on the multi-objective optimization for the SRSP based on the STK simulation, where the failure rate and total profit of requests are optimized, respectively. However, these two objectives are often regarded as the same by satellite monitoring departments since the relations between them are noticeable. In summary, most of the previous studies made efforts to decrease the failure rates of the requests in the SRSP under different backgrounds and were proven effective in addressing this objective of the SRSP.
+Although the completion of satellite-ground communication requests is particularly important, there still remain some other appealing objectives in satellite daily management. For example, the load balance among ground remote-tracking resources, which is a different objective from a resource view, is also a great concern for satellite monitoring departments. The load balance makes for (1) rationalizing the utilization of ground remote-tracking resources, (2) prolonging the resource service lives, and (3) promoting the response capability of each resource for emergencies; hence it is irrational to blindly pursue the completion of requests but neglect the load balance among resources. In addition, the existing optimization techniques for SRSP Benchmarks and engineer instances could well obtain a satisfactory request failure rate around 5%
+[9], so that the multi-objective optimization of other SRSP objectives concerned by satellite monitoring departments will be much more instructive. Therefore, the multi-objective optimization methods for addressing different appealing objectives in the SRSP are really required.
+Recent decades also witnessed the rapid development of multiobjective optimization methods centering evolutionary algorithms, and a large number of multi-objective evolutionary algorithms (MOEAs) have been proposed [17–19]. The existing MOEAs can be divided into three categories: (1) Domination-based MOEAs, which use the concept of
+Pareto dominance to discriminate among solutions per generation. In this type of MOEAs, non-dominated solutions in the population will be preserved using different strategies for the next iteration. The most popular domination-based MOEAs include NSGA-II [20] and SPEA2 [21]. (2)
+Decomposition-based MOEAs, which decompose the multi-objective problems into several single-objective subproblems using different weight vectors and aggregation functions. In this type of MOEAs, parent solutions are generated from the neighboring subproblems, and the high search performance in various problems has been demonstrated in the literature [22–28]. (3) Metric-based MOEAs, which evaluate the performance of solutions with the man-made metrics, such as the hypervolume-based HypE [29], the R2 indicator-based MOMBI-II [30] and the IGD-based AR-MOEA [31]. In addition to these types of MOEAs, there also appear some combinational MOEAs in recent studies such as
+NSGA-III [32] and MOEA/DD [33], which are based on domination and decomposition simultaneously and integrate both characteristics of the domination-based
+MOEAs and the decomposition-based
+MOEAs.
+Notably, although the MOEAs differ in the many aspects, the evolutionary mechanisms including selections, crossovers and mutations in these algorithms are truly similar to each other; hence the practical multi-objective optimization problem can often be addressed by different
+MOEAs. Nonetheless, the mechanisms in different MOEAs will also influence the optimization effects, especially in addressing constrained and complex problems.
+If combining with the problem-specific and objective-specific local search metaheuristics, the MOEAs should present better overall performance.
+Memetic algorithms provide an idea of the combination of the evolutionary algorithms and local search metaheuristics, and the memetic algorithms that cooperate with MOEAs are getting increasingly popular in various multi-objective optimization problems. For neural network design, Liu et al. [34] introduced a series of adaptive high-performance network training methods and put forward a PSO based memetic algorithm. For wireless networks optimization problem,
+Arivudainambi and Rekha [35] proposed a GA based memetic algorithm with a r-shrink procedure. For distributed flow shop scheduling problems, Deng and Wang [36] integrated several knowledge-based local search operators into a competitive memetic algorithm and showed the enhancement in solution exploitation. For home health care optimization problem, Decerle et al. [38] proposed a NSGA-II based memetic algorithm with the distinct individual learning provided by multi-directional local searches. Sindhya et al. [39] pointed out the shortcomings of
+MOEA/D in the convergence and introduced a gradient-based sequential quadratic programming method to construct a hybrid MOEA/D framework. Mashwani and Salhi [40] proposed a new MOEA/D based on the
+PSO and differential evolution, where the PSO plays a local search engine and differential evolution works as the main evolutionary operator.
+Zhang et al. [41] embedded a gradient-based local search operator in
+MOEA/D and showed its outperformance in large-scale optimization problems. Lei et al. [42] designed a period-supplement operator and a bi-directed local search operator with respect to examination timetabling problems and derived the promising sets of non-dominated solutions in their experiments. However, previous studies usually combined the local search with one special kind of MOEA, but different MOEAs may have their own applicable problems. As the MA centers on the combinational idea of the MOEA and local search, other than one specially designed algorithm, a more general MOEA based optimization framework using the ideas of MA can be proposed and applied with different types of
+MOEAs.
+Inspired by the successful applications of the MOEAs and memetic algorithms, a general MOEA based memetic algorithm (MOEA-MA) framework is adopted in this paper for addressing the MOSRSP with the dual objectives of the request failure rate and the load-balance degree. In the MOEA-MA, the MOEA plays the frame algorithm, while several local search operators are designed and triggered per generation. In each population, evolutionary operations are implemented by crossover and mutation operators specific to the MOSRSP, and some knowledge-based local search operators are developed to enhance the exploitation. The highlight of this paper is the development of a MOEA based multiobjective memetic optimization framework for the MOSRSP. Extensive computational experiments show that the algorithm is effective in addressing the studied MOSRSP.
+The remainder of the paper is organized as follows: In Section 2, the
+MOSRSP is described and formulated. In Section 3, the framework of the
+MOEA-MA is introduced and then the evolutionary and local search operators specific to the MOSRSP are designed. Experiment setting and computational studies are given in Section 4 and Section 5, respectively.
+Finally, the paper ends with some discussions and conclusions in Section
+6 and Section 7, respectively.
+2. Multi-objective satellite range scheduling problem (MOSRSP)
+It is obvious that the SRSP is essentially a multi-objective problem from the previous introduction. Aiming at minimizing the objectives of the request failure and resource load-balance degree of a given schedule, the mathematical modeling for the MOSRSP are required. These two objectives are not irreconcilable in satellite management, so the dual optimization of them is reasonable and possible. In this section, several concepts and assumptions are first introduced, and then multi-objective functions, as well as constraint conditions, are enumerated in the following parts of this section.
+2.1. Preliminaries
+Considering that this paper focuses on the multi-objective optimization for the MOSRSP, several reasonable assumptions are proposed to standardize and simplify this problem referring to previous researches and engineering experiences:
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ As the satellite-ground communication of each satellite is usually conducted several times per day, the orbit prediction for satellites is regarded as determinate and reliable, independent of the scheduling status with previous or other satellite-ground communication requests.
+ As the MOSRSP emphasizes the daily management for satellite monitoring departments, the unexpected accident is unconsidered.
+All the satellites, remote-tracking stations and antennas work normally in the whole scheduling horizon.
+ As the scheduling problem for employee timetabling is not focused in this paper, the antennas are considered as all-time available regardless of the scheduling of the employees or operators.
+ As the relay satellite is usually regarded as a space-based remotetracking station, the satellite-satellite communication request based on relay satellites is not specified in this paper, and all the requests are named as satellite-ground communication requests.
+ According to the practical operational procedure including the antenna alignment, equipment preheating and personnel preparation, the turnaround time for antennas is defined by a constraint, and there will be no allowable satellite-ground communication within this time.
+ According to the current technologies in memory and communication, the satellite-ground communication request is non-preemptive and cannot be interrupted, while the remote-tracking antenna cannot be released until the communication is finished.
+Based on the aforementioned assumptions, the solution S for
+MOSRSP can be generally described by:
+S 1⁄4 fR; W; A; S; ST; ETg
+(1) where the included notations are defined as follows:
+ R 1⁄4 frij1  i  nr; jRj 1⁄4 nrg represents the set of satellite-ground communication requests. Each request ri is composed of a six tuple: ri 1⁄4 fi; si; di; Ci; pi; Wig
+(2) where i is the identifier for ri, si is the satellite that ri belongs to, di is the required communication time for ri, Ci is the required turnaround time of the antenna for ri, pi reflects the priority of ri, and Wi is the set of visible time windows for ri.
+ Wi 1⁄4 fwij
+1  j  ni w; jWij 1⁄4 ni wg is the set of visible time windows for the satellite-ground communication request ri. Each wij has four important elements: wij 1⁄4
+ swij; ewij; si; aij
+
+(3) where 1⁄2swij; ewij] is the available period of wij, si is the satellite that is visible to aij in this time window, and aij represents the remote-tracking antenna that provides this time window. Notably, the duration of the wij is exactly equal to the di of the satellite-ground communication, namely, the given time windows concerning the high-orbit satellites in the datasets will be evenly divided into several sub-windows that can exactly cover the communication of ri, as shown in Fig. 1.
+ A 1⁄4 fakj1  k  na; jAj 1⁄4 nag is the set of ground remote-tracking antennas. For each time window wij of the request ri, its antenna aij belongs to A.
+ S 1⁄4 fsmj1  k  ns; jSj 1⁄4 nsg is the set of satellites for communication.
+For each request ri, its si belongs to the S.
+ 1⁄2ST; ET is the scheduling horizon for the MOSRSP.
+It is worth noticing that a general SRSP not only includes the communication requests with low-altitude satellites, but also contains a large number of requests with high-altitude satellites. For global optimization of the MOSRSP, the phased scheduling framework like Gooley’s research [4] are not adopted in this study. To carry out the comprehensive scheduling for the SRSP involving the satellites at all orbital altitudes, the decision model needs not only to select the appropriate visible time window for each request, but also to determine the exact start-time and end-time for this request within the time window. Therefore, the decision variables in the studied SRSP can be defined by: xij 1⁄4
+
+<
+:
+1; the request ri is supported by the antenna aij that provides the jth visible time window wij of the set Wi
+0; otherwise
+(4)
+2.2. Multi-objective functions in MOSRSP
+To develop the multi-objective optimization algorithm for the studied
+MOSRSP and to give overall consideration to the satellite-ground communication requests as well as the utilization of remote-tracking antennas managed by satellite monitoring departments, a bi-objective function for the MOSRSP is proposed: min FðS Þ 1⁄4 ff1ðS Þ; f2ðS Þg
+(5)
+Fig. 1. Illustration of the visible time window processing of high-orbit requests for the SRSP. (a) The given and the divided visible time windows. (b) The execution of a request in the given and the divided visible time windows.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ f1ðS Þ, the failure rate of satellite-ground communication requests, namely, the total priorities of the requests that cannot be executed in the schedule S : f1ðS Þ 1⁄4 1 
+X nr i1⁄41 xij ⋅pi
+. X nr i1⁄41 pi
+(6) f2ðS Þ 1⁄4
+(Pna k1⁄411⁄2LðakÞ  LðAÞ
+2 na  1
+)1
+2,
+LðAÞ
+(7) where LðakÞ represents the total working time of antenna ak, and LðAÞ represents the mean total working time of antennas in the schedule:
+LðakÞ 1⁄4
+X nr i1⁄41
+X ni w j1⁄41 xij ⋅
+ swij  ewij
+
+; if aij 1⁄4 ak
+(8)
+LðAÞ 1⁄4
+Pna k1⁄41LðakÞ na
+(9)
+This bi-objective function well meets the dual demands on the communication execution and antenna management by satellite monitoring departments. With the optimization of this bi-objective function, the satellite monitoring departments are able to obtain more reasonable schedules and optional choices. It is also helpful to potentially prolong the antenna service lives and promotes the response capability of the antenna for emergencies.
+2.3. Constraints in MOSRSP
+According to the regular satellite range scheduling situation in satellite monitoring departments, the objectives of the MOSRSP should also be subjected to some constraint conditions, which restrict the schedule in logical and feasible ways. Based on the decision model established above, there still remain two major constraints in the MOSRSP: (1) the uniqueness for request execution and (2) the non-overlapping for request execution per antenna. Therefore, the mathematical equations that describe these constraint conditions for the MOSRSP are enumerated as follows:
+8i :
+X ni w j1⁄41 xij  1
+(10)
+8i1; i2ði1 61⁄4 i2Þ; j:
+ xi1j ⋅xi2j 1⁄4 0
+
+_
+ ai1j 61⁄4 ai2j
+
+_
+ swi1j  Ci1; ewi1j
+
+\
+ swi2j  Ci1; ewi2j
+
+1⁄4 ∅
+
+(11)
+Constraint (10) implies that each request can only be executed at most once, namely, it can only be supported by one remote-tracking antenna within one of the visible time windows, or be cancelled. Constraint (11) restricts that for each antenna, the time slots produced by any two satellite-ground communications including the required turnaround time cannot overlap, namely, the antenna can only support one communication at the same time. Notably, the constraints concerning visible time windows, the required execution duration and the required frequency bands are no longer formulated in this section, as they have been integrated into the value ranges of the decision variable in the previous decision model. In other words, the proposed decision model streamlines the constraint conditions of the MOSRSP and reduces the decision space of the problem naturally.
+3. MOEA based memetic algorithms for MOSRSP
+To resolve the multi-objective optimization of the request failure and load-balance degree in MOSRSP, a general MOEA-MA optimization framework and some specific evolutionary and local search metaheuristics are presented. In this section, the framework of the MOEA-MA is first introduced, and then, the encoding and decoding methods for individuals, as well as the design of evolutionary and local search operators are illustrated in the following parts of this section.
+3.1. Framework
+There exist three major types of MOEAs: (1) domination-based
+MOEAs, (2) decomposition-based MOEAs and (3) metric-based MOEAs.
+Although these MOEAs differ in the many aspects, the evolutionary operations including selections, crossovers and mutations in these algorithms are truly similar. As the key idea of the MA is the combination of the evolutionary and local search operations, these MOEAs can all well cooperate with the local search metaheuristics for better performance.
+Therefore, a memetic algorithm optimization framework regarding three major types of MOEAs for addressing the studied MOSRSP is proposed, as shown in Fig. 2.
+(1) Regarding the domination-based MOEAs, the local search metaheuristics will be triggered right after the evolutionary operations so as to strengthen the domination features of the current population. The non-dominated sorting operations are conducted after the combination of the parent and offspring population per generation to constitute a new offspring. The offspring of the population will enter the next generation and play the new parents, guiding the follow-up evolutionary operations.
+(2) Regarding the decomposition-based MOEAs, for each uniformly decomposed sub-problem, the local search operations will be incorporated between the evolutionary operation and the reference update per generation. As the evolutionary operations will be conducted using the neighborhood individuals of the current subproblems, the local search metaheuristics that work with neighborhoods will be naturally appropriate and will not influence the follow-up aggregation and the update of the decomposition-based
+MOEAs.
+(3) Regarding the metric-based MOEAs, with the guidance of the metrics, the higher-metric individuals may take precedence over non-dominated individuals; hence the local search operations should also be guided by these metrics. In this way, the mechanism that reserves higher-metric solutions per generation in this algorithm will be facilitated. Notably, the calculation of the metrics should also depend on the reference surface of the problem. As there is no theoretical or acknowledged reference surface of the
+MOSRSP, the metric-based MOEAs with adaptive reference surfaces will be chosen in the following sections.
+In addition, the possible conflicting set for each request will be generated at the beginning of the MOEA-MA and used by conflictresolution operators in the incorporated local search metaheuristics.
+With the help of the different operations for multi-objective optimization, the MOEA-MA will terminate when it reaches the maximum generation and output the non-dominated solutions of the MOSRSP. Under such circumstances, the proposed framework can be applied to all kinds of MOEAs with different mechanisms, including the hybrid-mechanism
+MOEAs such as the evolutionary many-objective optimization algorithm using reference-point based non-dominated sorting approach
+(NSGA-III) [32] and the evolutionary many-objective optimization algorithm based on dominance and decomposition (MOEA/DD) [33].
+3.2. Individual representation
+Considering the characteristics of the dual decision in the MOSRSP, the individuals of a solution schedule need to present the information in two aspects: (1) which remote-tracking antenna to support the request
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ and (2) when to execute the request. Based on the decision model established above, the individual decoding of the MOSRSP is presented as follows:
+The individual depends on the set of requests. For each request, the gene is denoted by a random positive integer, which is less than or equal to the number of visible time windows ni w for this request. For example, as shown in Fig. 3, the gene for the request r1 is remarked by 3, so the decision variable x13 1⁄4 1 while other decision variable concerning this request equal 0, satisfying the Constraint (10) above. In other words, the gene indicates that the request r1 is supported by the antenna that provides the 3rd visible time window w13 of the set W1. If the gene for a request is remarked by 0, all the decision variables concerning this
+Fig. 2. The flow chart of the MOEA-MAs designed for MOSRSP.
+Fig. 3. Illustration of the decoding of an individual in MOSRSP.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ request will equal 0, implying that the request will be cancelled. In this way, all the genes in the individual decoding will constitute a solution schedule of the MOSRSP, which well presents the information of the supporting antennas and the time. Notably, the number of visible time windows for requests will be different from each other, so the value range for each gene will be also addressed differently.
+The advantage of this individual representation is providing a clear and deterministic mapping relationship to the mathematical decision model for the MOSRSP, which naturally addresses the constraints of visible time windows and the uniqueness for request execution. In addition, the non-overlapping constraint will be inevitably violated throughout the entire algorithm, so the low-priority request that overlaps a high-request will be directly cancelled so as to ensure the feasibility of the individuals. In this way, no other rule-based decoding process such as executing the request as early as possible [4,5] is required; hence the time consumed by the decoding process per operation can be saved.
+3.3. Design of crossover and mutation operators
+The two-point crossover operator is employed to perform crossover operations in the MOSRSP, as shown in Fig. 4. (a). First, two random break-points are used to divide the parent individuals into three segments. Secondly, both the middle segments are exchanged to generate two offspring. In this way, the genes with respect to the same request match up, and the value ranges for the genes are the same. On the one hand, the genes will not exceed the value ranges or produce meaningless solutions during the crossover operations; on the other hand, the portioned features of the parent solutions (the supporting antennas and time windows) will be unchanged and reserved into the offspring.
+In terms of the mutation operator, considering the optimization objective of maximizing the load-balance degree for the MOSRSP in
+Section 2.2, a probability-based mutation operator with respect to the current load degree of antennas is proposed. The main steps are as follows:
+(1) Accumulate the current total working time LðakÞ of the ak using equation (8).
+(2) Based on the total working time of all antennas, the workingleisure degree of antenna ak, which is denoted as probk, is expressed by the following equation: probk 1⁄4
+
+>
+>
+>
+<
+>
+>
+>
+:
+0:99 if LðakÞ 1⁄4 0
+1 
+LðakÞ
+Xna k1⁄41LðakÞ otherwise
+(12) where
+LðakÞ
+Pna k1⁄41LðakÞ represents the current working-load degree of antenna ak.
+It is generally known that to keep the load-balance among different antennas, the request ought to be supported by a low-load antenna.
+(3) The mutation operator is applied for all the genes in the individual. The mutation direction of each gene is determined by the roulette-wheel, where the selection probabilities for mutation antenna ak are denoted as Pk:
+Pk 1⁄4 probk
+Pna k1⁄41probk
+(13)
+For example, in Fig. 4. (b), suppose that the request r1 can be supported by antenna a11; a12; a13; a14; a15 and a16, and the working-load degrees
+LðakÞ
+Pna k1⁄41LðakÞ of them are 17%, 17%, 32%, 17%, 17% and 0, respectively. Then, the working-leisure degrees probk of these six antennas are
+0.83, 0.83, 0.68, 0.83, 0.83 and 0.99, respectively. Therefore, the selection probabilities for mutation Pk of these antennas are 0.17, 0.17,
+0.13, 0.17, 0.17 and 0.19, respectively. In can be seen that the a13 is assigned to the lowest selection probability while the a16 is assigned to the highest. Finally, the roulette will undertake the decision based on these mutation probabilities.
+Fig. 4. Illustrations of the crossover and mutation operations for individuals. (a) Two-point crossover operation. (b) Probability-based mutation operation.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+3.4. Design of local search operators
+To improve the quality of iterated solutions in the MOEA-MA, three types of local search operators and cooperated local search metaheuristics with the MOEA are designed. The first operator is a conflictresolution operator, which is used to resolve the possible conflicts in the individuals generated by the MOEA. The second is a load-balance operator, which is applied to the individuals for deliberately balancing the working-loads among the antennas. The third is a random-search operator, which is aimed at strengthening the ability of escaping from local optima. These three types of local search operators are devoted to locally optimizing the population after evolutionary operations per generation, and the descriptions on these operators are given below:
+(1) Conflict-resolution operator
+The conflict-resolution operator is shown in Fig. 5. The role of this operator is to distinguish the possible conflicts in the current solutions and provide effective ways to resolve the conflicts. Luo et al. [9] have proved that if two communication requests are supported by the same remote-tracking antenna ðxi1j ⋅xi2j 1⁄4 1Þ ^ ðai1j 1⁄4 ai2jÞ, and equations (14) and (15) are satisfied, then these two requests will have the possible conflicts in reality. Thus, for each request, all its possible conflicting requests can be screened out in advance, as the phase of possible conflicting request set generation in Fig. 2.
+swi1 þ di1 þ C2 þ di2 > ewi2
+(14) swi2 þ di2 þ C1 þ di1 > ewi1
+(15) with the possible conflicting request set, the conflict-resolution operators just alternate the genes of the possible conflicting requests. As shown in
+Fig. 5, the conflict-resolution operator will randomly select one gene of the possible conflicting requests, and then change the supporting antenna of this request. For example, r1; r4 and rnr are the possible conflicting requests, the operator selects the gene of r1 and changes its variable decision from x13 1⁄4 1 to x14 1⁄4 1, namely, changes the supporting antenna from a13 to a14. Notably, the antenna changing probability also follows the rules of the mutation operator designed above, which aims to ensure that this local operator will not affect the load-balance degree of the solution too much.
+(2) Load-balance operator
+The load-balance operator is used to move some requests from the high-loading antenna to low-loading antenna. For example, in Fig. 4. (b), the 3rd antenna a13 for request r1 is the highest-loading one, while the
+6th antenna a16 is lowest-loading one. Under such circumstances, the load-balance operator is designed to mover the request r1 from the highest-load antenna to the lowest-loading one. To avoid infeasible solutions, the request can only be moved to its available antennas. In this way, the local operator shows clear guidance in balancing the workingload degree of the schedule and is very likely to improve the quality of iterated solutions.
+(3) Random-search operator
+For the sake of the probabilistic jumping and intelligent performance, the random searching mechanism is also required. In the MOEA-MA, the random-search operator is designed to alternate the integer values of genes in the individual, ranging from 0 to the number of visible time windows for the request. The genes will be changed with a uniform probability distribution. Although the random-search operation shows certain blindness, it may help the algorithm escape from local optima when the algorithm is locally trapped.
+All the aforementioned local search operators will be incorporated in a tabu search metaheuristic framework, as shown in the following pseudo-code. It is worth mentioning that the objective function in local search operations may be different according to the type of incorporated
+MOEA. If the domination-based or decomposition-based MOEA is incorporated (in line 6–12), the individual that dominates another will be regarded as a better one; otherwise, when the metric-based MOEA is incorporated (in line 13–19), the individual whose metric function M is higher than another’s will be regarded as a better one.
+Either in line 6–12 or in line 13–19, the FIFO (first in, first out) tabu list LT will assist in the acceptance of individuals. Take the line 6–12 as an example, if the obtained individual S ’ dominates the current best-found individual S , S ’ will be accepted as the new best-found individual and the untabued best-found individual S * regardless of the tabu list; otherwise, when the untabued S ’ does not dominate S but dominates
+S *, S ’ will also be accepted as S *, which is adopted for helping the algorithm escape from local optima and explore a large solution space within limited steps. In other words, the tabu list LT records the recent individuals in this algorithm, and other untabued best-found individual
+S * will be preferred to the tabued ones. Therefore, the incorporated tabu search metaheuristic facilitates the functions of the local search. In addition, the local search operators in the MOEA-MA also play the repair operators. As the evolutionary operations will inevitably produce some poor individuals in the studied constrained SRSP, the designed local search operators can quickly obtain better individuals from their neighborhoods, which well addresses the constrained optimization of the
+SRSP.
+Algorithm
+Inner local search metaheuristic after evolutionary operations in MOEA-MAs
+Input: an individual S 1 after an evolutionary operation, a FIFO tabu list LT with the length lT, neighborhood exploration size NT
+Output: An improved individual S
+1:
+S cur ←S 1 {S cur is the current individual whose neighborhood is explored}
+2:
+S * ←S 1{S * is the best-found untabued individual in the neighborhood}
+3:
+S ←S 1 {S is the current best-found individual}
+4: for n ←1, 2, .... NT do
+5: randomly select one local search operator on S cur from {conflict-resolution, load-balance, random-search} and then obtain S ’acc
+6: if the domination-based or decomposition-based MOEA is incorporated then
+7: if S ’ dominates S then
+8:
+S ←S ’ {accept S ’ as the new best-found individual S }
+9:
+S * ←S ’ {accept S ’ as the new untabued best-found individual S * regardless of the tabu list}
+10: else if S ’ 62 LT and S ’ dominates S * then
+11:
+S * ←S ’ {accept S ’ as the new untabued best-found individual S * considering the tabu list}
+12: end if
+13: else {the metric-based MOEA is incorporated}
+14: if M(S ’) > M(S ) then
+15:
+S ←S ’
+(continued on next page)
+Fig. 5. Illustrations of the conflict-resolution operator.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+Algorithm (continued)
+16:
+S * ←S ’
+17: else if S ’ 62 LT and M(S ’) > M(S *) then
+18:
+S * ←S ’
+19: end if
+20: end if
+21:
+S cur ←S * {move to the untabued best-found individual}
+22: inserts S * into the FIFO tabu list LT and update the S *
+23: end for
+24: return S
+4. Experiment setting
+Before the computational study on the performance of the proposed
+MOEA-MA framework and inner operators for addressing the MOSRSP, the experimented scenarios and the performance metrics are introduced first in this section. For appropriate assignment of algorithm parameters, the influence of parameter setting is studied then. The MOEA-MA is programmed in the Evolutionary Multi-objective Optimization Platform
+(PlatEMO) [44], which can be accessed from https://github.com/BIM
+K/PlatEMO. All the algorithms are run 30 times independently using an Intel (R) Core (TM) i7-7600U CPU at 2.80 GHz under Windows 10 with 8 GB RAM.
+4.1. Experimented scenarios
+The MOEA-MAs were examined on the well-known SRSP Benchmark from AFSCN (2005), which can be accessed from http://www.cs.
+colostate.edu/sched/data.html.
+The
+Benchmark has been studied centering the single objective of the failure rate of requests [6,7,9] but is applied to multi-objective optimization for the first time in this paper.
+The Benchmark consists of seven-day satellite-ground communication requests and involves the requests on both high-altitude satellites and low-altitude satellites. The input of the dataset per day was the six-tuple, which is expressed by equation (1), and a set of non-dominated solutions using MOEA-MAs would be outputted, as well as their bi-objective values. In the Benchmark, as the priority of each request is not given, all the request priorities were remarked by 1. The time precision requirement of the problem is 1 min, so the visible time windows of requests given in the Benchmark were divided in minutes.
+4.2. Performance metrics
+For satellite monitoring departments, a good multi-objective algorithm should find the feasible, high-quality and well-distributed schedules for SRSP so as to provide effective alternatives for the decisionmakers. The following four metrics that are widely used in the performance evaluation for multi-objective optimization were selected in this paper: (1) coverage metric (CM) [45], (2) hypervolume (HV) [46], (3) spacing [47] and (4) diversity metric (DM) [48]. The equations for calculating these metrics are expressed by equation
+(16)–(19), respectively.
+CMðP1; P2Þ 1⁄4 jfS 2 2 P2j9S 1 2 P1 : S 2  S 1gj jP2j
+(16)
+HVðPÞ 1⁄4 δ
+	
+[jPj i1⁄41vi
+
+(17) spacingðPÞ 1⁄4 ffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffiffi
+1 jPj  1
+X jPj i1⁄41
+ðd  diÞ2 v u u t
+(18)
+DMðPÞ 1⁄4 df þ dl þ PjPj1 i1⁄41 jd  dij df þ dl þ ðjPj  1Þd
+(19)
+In equation (16), the P1 and P2 represent two achieved Pareto sets from different competitive algorithms. In equation (17), the δ represents the Lebesgue measure that calculates the volume, and the vi represents the hypervolume constituted by the reference point and the ith solution in the P. In this study, the reference point is the solution when all the objectives equal 1. In equation (18), the di represents the minimum
+Euclidean distance between the ith solution to any other solution in the P, and the d calculates the mean value of all the di. In equation (19), the df and dl represent the Euclidean distances between the extremum solutions and boundary solutions in the P. In addition, the di represents the
+Euclidean distance between the ith solution to its next neighborhood solution, while the d calculates the mean value of all the di. These metrics present the convergence, uniformity and diversity of a multi-objective optimization algorithm to a great extent, which will meet the requirement of the satellite monitoring departments on the algorithm evaluation.
+4.3. Algorithm and parameters setting
+Five types of the MOEAs were incorporated in the MOEA-MA framework in the experiments:
+(1)
+NSGA-II
+[20], which is a well-known domination-based
+MOEA;
+(2)
+MOEA/D, which is a well-known decomposition-based MOEA [22]; (3) AR-MOEA, which is a novel metric-based MOEA [31]; (4) NSGA-III and (5) MOEA-DD, which are the combinational MOEAs based on domination and decomposition.
+As the reference surface is unknown in the SRSPs, the AR-MOEA that adaptively estimates and adjusts the reference surfaces for the optimized problem is very suitable for the SRSPs in this study.
+To select appropriate parameters for MOEA-MAs, the Taguchi method of design-of-experiments (DOE) was used for conducting a preliminary experiment on the MOSRSP. For the parameter setting, the compromising scenario of the seven-day datasets was preferred, so the experiments were conducted in the middle (the 4th day) of the week. In MOEA-MAs, there are three important parameters: (1) the crossover probability (CP), which implies the evolutionary features of the population, (2) the mutation probability (MP), which implies the diversity of the population during the evolution, and (3) the number of local search iterations (NT), which distinguishes MOEA-MAs from traditional MOEAs and contributes to the solution convergence. Therefore, four levels of these three parameters were designed, as listed in Table 1, and the most appropriate parameter setting based on an orthogonal array experiment L16(43) [36]
+[37] would be selected. Other parameters like population size, the neighborhood exploration size for MOEA/D and MOEA/DD, and Tabu list size were controlled and assigned to 100, 20 and 5, respectively. The aggregation function in MOEA/D followed the Tchebycheff approach
+[22].
+Because the local search operators will obviously prolong the computing time per generation, the maximum computing time was chosen rather than the maximum number of generations as the termination criterion for the algorithm. To be consistent, considering the differences in the request number among the experimented scenarios, as well as the reserved time for daily SRSP in satellite monitoring departments, the termination criterions were assigned to nr  m2 seconds, where nr and m are the request and objective number, respectively.
+The L16(43) orthogonal array provides 16 combinations, and the corresponding experiments using the five types of MOEA-MAs were
+Table 1
+Parameters levels designed for parameter setting.
+Parameter
+Parameters level
+
+Crossover probability (CP)
+0.7
+0.8
+0.9
+1.0
+Mutation probability (MP)
+0.1
+0.2
+0.3
+0.4
+Neighborhood exploration size of local search (NT)
+
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ separately carried out. Totally 97 non-dominated solutions for the
+MOSRSP are obtained from the orthogonal experiments. For each combination, the response value is defined as the number of non-dominated solutions that are involved in the finally 97 non-dominated solutions. The orthogonal array and response variable results are listed in Table 2. On that basis, the mean response values and the rank of each parameter are listed in Table 3, where the parameter levels with the highest response values are highlighted with light gray backgrounds. It can be observed that the level 3 of CP, the level 2 of MP and the level 2 of NT produce the highest response values, respectively, and the influence of the NT is the most significant. According to the results of the orthogonal array experiments, the CP, MP and NT of the MOEA-MA in the following experiments were finally assigned to 0.9, 0.2 and 40, respectively. In addition, the results also imply that these parameters are not the larger the better, so the appropriate parameter setting in this subsection is necessary.
+5. Computational study
+In this section, to validate the multi-objective optimization ability of the proposed MOEA-MAs for the MOSRSP, the computational results from different Benchmark scenarios are presented, and the algorithm performance analysis with respect to the aforementioned metrics is conducted. Furthermore, to distinguish the effects designed local search operators in MOEA-MAs, some analysis on the contributions of the algorithm operators is also provided.
+5.1. Computational results
+This subsection presents the overview of the MOEA-MAs for MOSRSP.
+Seven scenarios (from SRSP1 to SRSP7) of the SRSPs in the AFSCN
+Benchmark were examined. For each scenario, NSGA-II, MOEA/D, ARMOEA, NSGA-III and MOEA/DD and their corroding MOEA-MAs were run 30 times to address the problem, respectively. As a result, the nondominated solutions obtained after a random run in different scenarios using different algorithms are plotted in Fig. 6, where the x-axis denotes the first objective (the failure rate of requests) and the y-axis denotes the second objective (the load-balance degree of antennas) of the problem.
+It can be found that in most scenarios in Fig. 6, the MOEA-MAs obtain the Pareto solutions with stronger domination than the original MOEAs.
+The obtained failure rates of requests range from 0.05 to 0.35 while the load-balance degrees of antennas range from 0.14 to 0.47. Therefore, maintaining different levels of request failure rates, the MOEA-MAs are able to provide many compromise solutions with various load-balance degrees for satellite decision-makers. By comparing the Pareto fronts of different types of algorithms, MOEA/DD and MOEA/DD-MA show good performance in the solution spread, as the maximum-objective solutions obtained by these two algorithms usually outperform other algorithms.
+However, in contrast to other algorithms, these two algorithms seem not to maintain the satisfactory evenness of solutions. In addition, it can also be observed that the solutions are usually well-distributed in the x-axis, namely the objective of the request failure rate. It is attributed to that the failure requests are usually no many in these SRSP scenarios, the difference between the adjacent Pareto solutions in the x-axis is only one failure request.
+For a more intuitive view on the multi-objective optimization effect of
+MOEA-MAs, the solutions with the highest and the lowest load-balance degrees resulting from the MOEA/DD-MA on SRSP1 are chosen for plotting the working time (hours) of their 19 antennas in Fig. 7 (a) and
+Fig. 7 (b), respectively. The radar figure (a) indicates that for the sake of a low request failure for satellite-ground communication, the antennas work with quite unbalanced loads, which would cause the discontented antenna usage in satellite monitoring departments. On the other hand, the figure (b) shows that MOEA-MA can well address the load-balance among the antennas and provide a very satisfactory solution for the satellite departments, where the unbalance working loads of antenna 10,
+12 and 18 are mainly due to their limited visible time windows.
+5.2. Analysis of algorithm performance
+In this subsection, the analysis of algorithm performance is conducted, including the metrics of (1) the CM, (2) the HV, (3) the spacing and (4) the DM. The mean results of these metrics from the 30 runs for each algorithm are presented in Table 4 to Table 6.
+Regarding the CMs listed in Table 4, for each type of MOEA, the “—” denotes the
+CM(MOEA,
+MOEA-MA) and the
+“MA” denotes the
+CM(MOEA-MA, MOEA). The better performance between the MOEA and
+MOEA-MA is highlighted with a light gray background, and the best performance among the algorithms for each SRSP is highlighted with a dark gray background. The experimental results show that in all scenarios of the SRSP, the MOEA-MAs clearly outperforms the MOEAs in term of the CMs. It is indicated that within the same computing time, the proposed MOEA-MA framework in this paper can assist in the optimization of non-dominated solutions considerably and show good adaptability to different kinds of MOEAs. In addition, the results also imply that MOEA/D-MA is able to obtain higher CMs than other competitors, while MOEA/DD-MA seems to obtain slightly lower results. In other words, the proposed MOEA-MA framework in this paper shows the best performance in searching non-dominated solutions when cooperating with MOEA/D, and does not help very much when cooperating with
+MOEA/DD. Regarding this inference, the Pareto fronts obtained by
+MOEA/DD may be close to the true fronts, for example, it can often obtain the solutions with much smaller f1 and f2, there will not exist a large improvement space for the local search operators designed in the proposed MOEA-MA.
+Regarding the HVs listed in Table 5, for each type of MOEA, the “—” denotes the HV(MOEA) and the “MA” denotes the HV(MOEA-MA). The experimental results show that, in most scenarios of the SRSPs, the
+MOEA-MAs obtain the higher HVs than the MOEAs within the same computing time. As the high-value HV implies the good overall performance of the algorithm, the different MOEA-MAs generally outperform the MOEAs and present good adaptability to different kinds of MOEAs.
+The results also show that MOEA/DD-MA obtains the 5 highest HVs in all
+Table 2
+Orthogonal array and response variables for parameter setting.
+Combination
+Levels of the parameters
+Response variable
+CP
+MP
+NT
+
+Table 3
+Mean response values and the rank of each parameter.
+Parameter level
+CP
+MP
+NT
+
+14.50
+15.50
+9.75
+
+12.50
+25.25
+29.25
+
+23.75
+5.75
+13.00
+
+7.50
+11.75
+6.25
+Delta
+16.25
+19.50
+23.00
+Rank
+
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+Fig. 6. Non-dominated solutions obtained in different scenarios using different algorithms (the x-axis denotes the first objective and the y-axis denotes the second objective of the problem).
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ scenarios of SRSPs, and NSGA-II and MOEA/DD obtain one, respectively; hence, the MOEA-MA that corporates with MOEA/DD can provide the outperformance in terms of the HV in the studied SRSPs. Notably,
+MOEA/DD itself is proven good at the HV [33], although the results of
+CMs imply that the proposed MOEA-MA framework in this paper is not much helpful to MOEA/DD, the solutions with smaller f1 and f2 obtained by MOEA/DD and MOEA/DD-MA still assist in their good performance in terms of the HV.
+Regarding the spacing listed in Table 6, for each type of MOEA, the
+“—” denotes the spacing(MOEA) and the
+“MA” denotes the spacing(MOEA-MA). The experiments show that the results with better performance are seemly obtained by the MOEAs and MOEA-MAs
+Fig. 7. Radar plot for antenna load-balance analysis using the MOEA -MA. (a) Antenna working time with the highest load-balance degree. (b) Antenna working time with the lowest load-balance degree.
+Table 4
+Performance analysis of the CMs using different algorithms.
+Table 5
+Performance analysis of the HVs using different algorithms.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ indeterminately. Other than the conflict-resolution and the load-balance operators, there is no special operator designed for the evenness of solutions in the proposed MOEA-MA framework, so the MOEA-MAs in this section probably do not well contribute to this metric. In addition, NSGAII and MOEA/D and their MOEA-MAs obtain all the best-performing spacing results in the SRSPs, which demonstrates that these two kinds of MOEAs are good at the optimization in the uniformity and evenness of non-dominated solutions. MOEA/DD and MOEA/DD-MA are not good at this metric, and some of their obtained Pareto solutions shown in Fig. 6 are not well-distributed as well.
+Regarding the DMs listed in Table 7, for each type of MOEA, the “—” denotes the DM(MOEA) and the “MA” denotes the DM(MOEA-MA). The experimental results show that in many scenarios of the SRSP, the MOEAMAs usually outperforms the MOEAs in terms of the DMs. It is indicated that within the same computing time, the proposed MOEA-MA framework in this paper can also assist in the diversity of non-dominated solutions and show good adaptability to different kinds of MOEAs. In addition, although MOEA/DD and MOEA/DD-MA underperform in terms of the solution spacing, they obtain all the best-performing results with respect to DMs in the SRSPs, and the results are with much higher DMs than those from other algorithms. It can also be observed in Fig. 6, these two algorithms truly present outperformance in the solution diversity, especially on the SRSP4 and SRSP6.
+In summary, this subsection validates that the proposed MOEA-MA framework is applicable to different types of MOEAs and can improve the algorithm performance in terms of CM, HV and DM. Among these three metrics, MOEA/D-MA shows the best performance in CM, which implies that the proposed MOEA-MA is much more effective to MOEA/D;
+MOEA/DD and MOEA/DD-MA outperform other competitors in terms of
+HV and DM, which implies that these decomposition-based MOEAs are much more suitable for the studied SRSP in this paper. Regarding these inferences, the neighborhood mechanism centered in the decompositionbased MOEAs is fits the incorporated local search metaheuristics in the proposed MOEA-MA very well; hence the decomposition-based MOEAs may be more suitable for the SRSP using the MOEA-MA to in this paper.
+5.3. Analysis of algorithm operators
+As there are several evolutionary and local search operators in the
+MOEA-MAs, it is necessary to identify the contributions of these operators for finding the non-dominated solutions; hence the contribution rates of different functional operators to non-dominated solutions in the
+SRSPs are recorded. In each iteration the experiments, if a nondominated solution is found, the operator that obtains this solution will be counted. Table 8 shows the mean percent of historical best-found non-dominated solutions obtained by different functional operators in all
+SRSPs through the different algorithms, where for each type of MOEA, the main contributor among the five operators is highlighted with a light
+Table 6
+Performance analysis of the spacing using different algorithms.
+Table 7
+Performance analysis of the DMs using different algorithms.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ gray background, and the main contributor regarding all the five MOEAs is highlighted with a dark gray background.
+As the table shows, the local search operators, including (1) conflictresolution operator, (2) load-balance operator and (3) random-search operator, make over 50% contributions in all five types of MOEA-MAs, while other crossover and mutation operators of the traditional MOEA make fewer contributions. The results imply that the local search metaheuristics incorporated in the MOEAs, especially the conflict-resolution and load-balance operators, considerably promote the optimization of the MOSRSP by resolving the conflicts and balancing the loads. Among the evolutionary operators, the crossover operators appear to present the strongest ability in finding non-dominated solutions. It is also indicated that all those operators have their own contributions, so the designs of these operators in the MOEA-MA are required and reasonable.
+For a more intuitive view on the effect of the inner local search operations, two generations that are in an early iteration and a late iteration are chosen to illustrate the local search operations on the population, respectively. Fig. 8 (a) shows that in an early iteration of NSGA–III–MA, there remain a number of dominated individuals in the population after evolutionary operations. Based on the current population, the local search operations here produce a series of neighborhood solutions that dominate the current individuals and assist in the convergence of the population. In addition, Fig. 8 (b) shows that in a late iteration of
+NSGA–III–MA, the population has converged to several non-dominated individuals, the local operations also give the opportunities for obtaining high-quality solutions. In summary, the inner local search operators in MOEA-MAs not only search for the non-dominated solutions based on the current Pareto fronts, but also assist in the convergence of the other individuals derived from the MOEAs per generation.
+6. Discussion
+SRSP is a daily optimization problem faced by satellite monitoring departments. The SRSP guarantees the normal operation and the realtime control of in-orbit satellites, which plays an extremely important role in satellite management. Previously, there appears a stronger demand for multi-objective optimization by satellite monitoring departments and many optimization techniques have been developed for the SRSP, but multiple scheduling criteria are rarely considered simultaneously in existing literature. This provides a motivation for developing a multi-objective optimization method for addressing the MOSRSP in this paper.
+The main contributions of this paper are the effective MOEA-MA framework for multi-objective optimization problems and its application on the constrained MOSRSP. In the mathematical modeling of the
+MOSRSP, two most concerned objectives, including the request failure rate of satellite-ground communication and the load-balance degree among remote-track antennas are addressed, and the constraints are well streamlined by the decision model. The proposed MOEA-MA framework is suitable for (1) domination-based MOEAs, (2) decomposition-based
+MOEAs and (3) metric-based MOEAs, and the experiments using
+NSGA–II–MA, MOEA/D-MA, AR-MOEA-MA, NSGA–III–MA and MOEA/
+DD-MA demonstrates the effectiveness and adaptivity of the MOEA-MA.
+The effectiveness and adaptivity of the MOEA-MAs should be attributed to the following three reasons: (1) The combinational idea of the
+MA. With the global and diverse optimization ability from MOEAs and
+Table 8
+Operator contributions to non-dominated solutions in the MOEA-MA.
+Fig. 8. Illustrations on the local search operations of the MOEA-MA per generation. (a) The local search operations in an early iteration. (b) The local search operations in a late iteration.
+Y. Du et al.
+Swarm and Evolutionary Computation 50 (2019) 100576
+
+ the local optimization ability from the local search, the MOEA-MAs are more likely to present better overall performance. (2) The objectivedirected evolutionary operators in MOEAs and local search metaheuristics in the inner local search, respectively. These operators are specifically designed for the optimization problem with the dual demands on the load balance and request profits. (3) The repair operators that the local search operators play simultaneously. The inner local search mechanism can well address the poor solutions per generation, which is suitable for the optimization of constrained scheduling problems. Therefore, the MOEA-MAs provide an effective way for the multiobjective optimization of the studied MOSRSP.
+In addition, it is also worthwhile to apply the MOEA-MAs to other kinds of practical resource scheduling problems with dual demands on load balance and request profits, for example, the job shop scheduling problem concerning the load balance among machines and the capacitated vehicle routing problem concerning the load balance among vehicles. As the combinational idea of MOEAs and the local search is applicable, as well as the conflict-resolution and load-balance operators designed in this paper, the MOEA-MAs should also present satisfactory performance. It worth mentioning that a well-designed decision model is also required for the MOEAs on constrained scheduling problems, which should streamline the constraint conditions and reduces the decision space of the problem.
+Despite that the two most concerned objectives of the SRSP are involved in this paper, there still remain many other appealing factors in satellite daily management, such as (1) the load balance among different remote-tracking stations/regions, (2) the work concentration degree of the antenna in a day, (3) the elevation degree of the antenna for satelliteground communication and (4) the communication frequency to the same satellite. Therefore, the SRSP seems to be a many-objective optimization problem, not limited to a bi-objective one. Further work concerning the aforementioned objectives will be conducted and a lightweight executable system using the MOEA-MAs will be designed. In addition, more competitive MOEAs and local search metaheuristics will be incorporated and studied in new MOEA-MAs.
+7. Conclusion
+To address the MOSRSP faced by satellite monitoring departments, a general MOEA-MA optimization framework is proposed, which optimizes the failure rate of ground-satellite communication requests and the load-balance degree of remote-tracking antennas. A well-designed decision model for MOSRSP is also given. Different types of the MOEAs, including the domination-based MOEAs, decomposition-based MOEAs and metric-based MOEAs are adopted to implement the evolutionary operations in the MOEA-MA. The MOEA-MAs that adopt five well-known
+MOEAs are given and examined by the Benchmarks problems.
+As the result of the application of the MOEA-MAs on Benchmarks datasets, high-quality solutions in terms of the metrics of coverage, hypervolume and spacing are obtained, in comparison with the original
+MOEAs. The MOEA-MAs well address the MOSRSP with the two most concerning objectives and show good adaptivity to different types of
+MOEAs. In addition, it is also worthwhile to apply the MOEA-MAs on other kinds of the resource scheduling problems with dual demands on load balance and request profits.

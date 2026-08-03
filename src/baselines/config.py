@@ -35,15 +35,26 @@ def validate_baseline_config(config, mappo_config=None):
     training = config["training"]
     if training["split"] != "train":
         raise ValueError("基线训练只允许train划分")
-    if training["validation"]["split"] != "validation":
-        raise ValueError("基线模型选择只允许validation划分")
-    if "test" in {training["split"], training["validation"]["split"]}:
+    if training["validation"]["protocol"] != "checkpoint_selection":
+        raise ValueError("基线模型选择必须使用checkpoint_selection协议")
+    if "split" in training["validation"]:
+        raise ValueError("validation划分已由隔离协议取代，不得直接配置split")
+    if training["split"] == "test":
         raise ValueError("基线训练不得使用test划分")
     for name in ("task_count", "episode_count", "rollout_steps"):
         _finite_number(training[name], "training.{0}".format(name), positive=True)
-    seeds = training["validation"]["seeds"]
-    if not seeds or len(seeds) != len(set(seeds)):
-        raise ValueError("validation seeds必须非空且互不重复")
+    protocols = config["evaluation_protocols"]
+    _finite_number(protocols["split_seed"], "协议划分seed", nonnegative=True)
+    for protocol_name in ("reward_search", "checkpoint_selection", "test"):
+        protocol = protocols[protocol_name]
+        _finite_number(
+            protocol["task_count"],
+            "协议任务数.{0}".format(protocol_name),
+            positive=True,
+        )
+        seeds = protocol["seeds"]
+        if not seeds or len(seeds) != len(set(seeds)):
+            raise ValueError("协议seeds必须非空且互不重复")
 
     lyapunov = config["methods"]["ppo_lya"]["lyapunov"]
     for name in (
@@ -55,8 +66,13 @@ def validate_baseline_config(config, mappo_config=None):
     ):
         _finite_number(lyapunov[name], "lyapunov.{0}".format(name), positive=True)
     weights = lyapunov["feature_weights"]
-    if set(weights) != {"backlog", "expiration_risk", "utilization_imbalance"}:
-        raise ValueError("Lyapunov特征权重必须恰好包含三项")
+    if set(weights) != {
+        "backlog",
+        "expiration_risk",
+        "expired_undelivered",
+        "utilization_imbalance",
+    }:
+        raise ValueError("Lyapunov特征权重必须恰好包含四项")
     for name, value in weights.items():
         _finite_number(value, "lyapunov权重.{0}".format(name), nonnegative=True)
     if sum(weights.values()) <= 0:
@@ -107,9 +123,24 @@ def validate_baseline_config(config, mappo_config=None):
         "candidates_per_round",
         "candidate_training_episodes",
         "candidate_task_count",
-        "validation_task_count",
         "maximum_api_calls",
         "maximum_total_input_tokens",
         "maximum_total_output_tokens",
     ):
         _finite_number(search[name], "search.{0}".format(name), positive=True)
+    if search["evaluation_protocol"] != "reward_search":
+        raise ValueError("LLM候选搜索必须使用reward_search协议")
+
+    from mappo.model_selection import normalize_selection_rule
+
+    normalize_selection_rule(config["best_model_rule"]["metrics"])
+    eligibility = config["candidate_eligibility"]
+    _finite_number(
+        eligibility["minimum_accepted_sgl_mean"],
+        "候选最低SGL均值",
+        nonnegative=True,
+    )
+    dominance = eligibility["maximum_single_component_dominance"]
+    _finite_number(dominance, "候选奖励支配阈值", positive=True)
+    if dominance > 1.0:
+        raise ValueError("候选奖励支配阈值不得超过1")

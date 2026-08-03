@@ -15,8 +15,9 @@ baselines:
         gamma: 0.99
         shaping_coefficient: 0.20
         feature_weights:
-          backlog: 0.50
-          expiration_risk: 0.40
+          backlog: 0.45
+          expiration_risk: 0.35
+          expired_undelivered: 0.10
           utilization_imbalance: 0.10
         urgency_power: 2.0
         numerical_tolerance: 1.0e-9
@@ -48,18 +49,16 @@ baselines:
         maximum: 3.0
       selected_reward_spec_path: results/baselines/reward_specs/selected_reward_spec.json
 
-      # 默认搜索规模只用于验证安全、公平的候选流水线，不代表正式实验预算。
       search:
-        rounds: 1
-        candidates_per_round: 2
-        candidate_training_episodes: 1
+        rounds: 5
+        candidates_per_round: 8
+        candidate_training_episodes: 2
         candidate_task_count: 200
         common_training_seeds: [2025]
-        validation_seeds: [3025, 3026, 3027]
-        validation_task_count: 100
-        maximum_api_calls: 4
-        maximum_total_input_tokens: 100000
-        maximum_total_output_tokens: 20000
+        evaluation_protocol: reward_search
+        maximum_api_calls: 60
+        maximum_total_input_tokens: 1000000
+        maximum_total_output_tokens: 200000
       cache:
         enabled: true
         directory: results/baselines/llm_search/api_calls
@@ -72,15 +71,35 @@ baselines:
     rollout_steps: 64
     validation_interval_episodes: 1
     validation:
-      split: validation
-      task_count: 100
+      protocol: checkpoint_selection
+
+  # 以下池和seed均为本项目复现补充设置，并非论文公开参数。
+  evaluation_protocols:
+    split_seed: 2027
+    reward_search:
+      task_count: 50
       seeds: [3025, 3026, 3027]
-      deterministic: true
+    checkpoint_selection:
+      task_count: 50
+      seeds: [4025, 4026, 4027]
+    test:
+      task_count: 100
+      seeds: [5025, 5026, 5027, 5028, 5029]
 
   best_model_rule:
-    primary_metric: timeliness_raw_mean
-    secondary_metric: load_balance_mean_per_task_mean
-    primary_tolerance: 1.0e-6
+    metrics:
+      - {metric: delivered_timeliness_raw_mean, direction: max, tolerance: 1.0e-6}
+      - {metric: completion_rate_mean, direction: max, tolerance: 1.0e-6}
+      - {metric: expiration_rate_mean, direction: min, tolerance: 1.0e-6}
+      - {metric: delivered_data_mbit_mean, direction: max, tolerance: 1.0e-3}
+      - {metric: load_balance_mean_per_task_mean, direction: max, tolerance: 1.0e-9}
+      - {metric: rejected_subaction_rate_mean, direction: min, tolerance: 1.0e-9}
+
+  candidate_eligibility:
+    require_full_episode: true
+    require_data_conservation: true
+    minimum_accepted_sgl_mean: 1.0
+    maximum_single_component_dominance: 0.90
 
   output:
     root: results/baselines

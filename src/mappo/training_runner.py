@@ -8,7 +8,11 @@ import numpy as np
 import torch
 
 from .checkpoint import capture_rng_state, save_checkpoint
-from .evaluator import is_better_validation_result
+from .evaluation_protocol import (
+    build_evaluation_protocol,
+    public_protocol_metadata,
+)
+from .model_selection import is_better_validation_result
 from .trainer import parameter_vector
 from baselines.log_schema import (
     build_episode_log_record,
@@ -67,6 +71,7 @@ class BaselineTrainingRunner:
         update_index=0,
         best_validation_result=None,
         best_episode_index=None,
+        best_validation_details=None,
         skip_validation=False,
         max_steps_per_episode=None,
         validation_max_steps=None,
@@ -83,6 +88,13 @@ class BaselineTrainingRunner:
         critic_initial = parameter_vector(self.trainer.critic)
         total_steps_before = self.trainer.environment_steps
         episode_records = []
+        protocol_name = self.training["validation"]["protocol"]
+        selection_protocol = build_evaluation_protocol(
+            protocol_name,
+            self.training["evaluation_protocols"],
+            self.trainer.environment.task_splits,
+        )
+        protocol_metadata = public_protocol_metadata(selection_protocol)
 
         for episode_index in range(start_episode_index, target):
             episode_seed = self.training["base_episode_seed"] + episode_index
@@ -97,6 +109,7 @@ class BaselineTrainingRunner:
             episode_reward_min = math.inf
             episode_reward_max = -math.inf
             component_sums = {}
+            component_abs_sums = {}
             action_totals = {
                 "accepted_subaction_count": 0,
                 "rejected_subaction_count": 0,
@@ -130,6 +143,12 @@ class BaselineTrainingRunner:
                 )
                 for name, value in rollout["reward_component_sums"].items():
                     component_sums[name] = component_sums.get(name, 0.0) + value
+                for name, value in rollout[
+                    "reward_component_abs_sums"
+                ].items():
+                    component_abs_sums[name] = (
+                        component_abs_sums.get(name, 0.0) + value
+                    )
                 for name in action_totals:
                     action_totals[name] += int(rollout.get(name, 0))
                 final_info = rollout["final_info"]
@@ -144,6 +163,9 @@ class BaselineTrainingRunner:
                         "sum_shared_reward": rollout["sum_shared_reward"],
                         "reward_component_sums": rollout[
                             "reward_component_sums"
+                        ],
+                        "reward_component_abs_sums": rollout[
+                            "reward_component_abs_sums"
                         ],
                         **statistics.__dict__,
                         "accepted_subaction_count": rollout[
@@ -186,7 +208,11 @@ class BaselineTrainingRunner:
                     "min_step_reward": episode_reward_min,
                     "max_step_reward": episode_reward_max,
                     "reward_component_sums": component_sums,
+                    "reward_component_abs_sums": component_abs_sums,
                     "timeliness_raw": float(final_info["timeliness_raw"]),
+                    "delivered_timeliness_raw": float(
+                        final_info["delivered_timeliness_raw"]
+                    ),
                     "load_balance_raw": float(
                         final_info["load_balance_raw"]
                     ),
@@ -233,6 +259,11 @@ class BaselineTrainingRunner:
                             0.0,
                         )
                         / episode_steps,
+                        "expired_undelivered_mean": component_sums.get(
+                            "expired_undelivered",
+                            0.0,
+                        )
+                        / episode_steps,
                         "utilization_imbalance_mean": component_sums.get(
                             "utilization_imbalance",
                             0.0,
@@ -267,15 +298,14 @@ class BaselineTrainingRunner:
             )
             if should_validate:
                 validation_result = self.evaluator.evaluate(
-                    self.training["validation"]["seeds"],
-                    self.training["validation"]["task_count"],
                     max_steps=validation_max_steps,
+                    protocol=selection_protocol,
                 )
                 candidate = validation_result["aggregate"]
                 is_new_best = is_better_validation_result(
                     candidate,
                     best_validation_result,
-                    self.training["best_model_rule"]["primary_tolerance"],
+                    self.training["best_model_rule"]["metrics"],
                 )
                 validation_record = {
                     "episode_index": episode_index,
@@ -290,6 +320,7 @@ class BaselineTrainingRunner:
                 if is_new_best:
                     best_validation_result = candidate
                     best_episode_index = episode_index
+                    best_validation_details = validation_result
 
             training_state = {
                 "episode_index": episode_index,
@@ -298,6 +329,8 @@ class BaselineTrainingRunner:
                 "environment_steps": self.trainer.environment_steps,
                 "best_validation_result": best_validation_result,
                 "best_episode_index": best_episode_index,
+                "best_validation_details": best_validation_details,
+                "evaluation_protocol": protocol_metadata,
             }
             rng_state = capture_rng_state(self.trainer.rng)
             if is_new_best:
@@ -340,14 +373,64 @@ class BaselineTrainingRunner:
             "critic_parameter_change_norm": critic_change,
             "best_episode_index": best_episode_index,
             "best_validation_result": best_validation_result,
+            "best_validation_scenarios": (
+                best_validation_details.get("scenarios", [])
+                if best_validation_details
+                else []
+            ),
+            "best_validation_data_conservation": (
+                best_validation_details.get(
+                    "all_scenarios_data_conservation_passed",
+                    False,
+                )
+                if best_validation_details
+                else False
+            ),
             "shortened_acceptance_mode": max_steps_per_episode is not None,
             "data_conservation_passed": True,
+            "evaluation_protocol": protocol_metadata,
+            "reward_diagnostics": self._reward_diagnostics(episode_records),
+            "llm_reward_weight_metadata": getattr(
+                self.trainer.reward_model,
+                "weight_metadata",
+                None,
+            ),
         }
         Path(self.training["logging"]["summary_path"]).write_text(
             json.dumps(summary, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         return summary
+
+    @staticmethod
+    def _reward_diagnostics(episode_records):
+        """汇总八个带权奖励分量的绝对贡献及最大单项支配比例。"""
+        weighted_names = (
+            "weighted_sgl_progress",
+            "weighted_relay_progress",
+            "weighted_completion",
+            "weighted_balance",
+            "weighted_expiration",
+            "weighted_invalid_action",
+            "weighted_coordination_conflict",
+            "weighted_relay_cost",
+        )
+        totals = {name: 0.0 for name in weighted_names}
+        for record in episode_records:
+            absolute = record.get("reward_component_abs_sums", {})
+            for name in weighted_names:
+                totals[name] += float(absolute.get(name, 0.0))
+        absolute_total = sum(totals.values())
+        dominance = (
+            max(totals.values()) / absolute_total
+            if absolute_total > 0.0
+            else 0.0
+        )
+        return {
+            "weighted_component_abs_sums": totals,
+            "weighted_component_abs_total": absolute_total,
+            "maximum_single_component_dominance": dominance,
+        }
 
     def _save_boundary_checkpoint(
         self,

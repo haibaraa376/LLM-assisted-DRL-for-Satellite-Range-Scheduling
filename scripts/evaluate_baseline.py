@@ -12,6 +12,11 @@ from baselines.methods import BaselineMethod, parse_baseline_method
 from baselines.run_management import atomic_write_json, load_json
 from mappo.checkpoint import load_checkpoint
 from mappo.config import load_mappo_config
+from mappo.evaluation_protocol import build_evaluation_protocol
+from mappo.model_selection import (
+    normalize_selection_rule,
+    rank_validation_results,
+)
 
 
 def parse_args():
@@ -26,6 +31,11 @@ def parse_args():
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"))
     parser.add_argument("--output")
     parser.add_argument("--max-steps", type=int)
+    parser.add_argument(
+        "--protocol",
+        choices=("checkpoint_selection", "test"),
+        default="checkpoint_selection",
+    )
     return parser.parse_args()
 
 
@@ -43,8 +53,9 @@ def evaluate_one(
     baseline_config,
     mappo_config,
     max_steps=None,
+    protocol_name="checkpoint_selection",
 ):
-    """加载并校验Checkpoint后在固定validation场景确定性推理。"""
+    """加载并校验Checkpoint后按显式协议确定性推理。"""
     method = BaselineMethod(method)
     spec = reward_spec if method == BaselineMethod.LLM_PPO else None
     config, encoder, actor, critic, trainer, evaluator = build_baseline_components(
@@ -69,11 +80,25 @@ def evaluate_one(
         raise ValueError("Checkpoint的Lyapunov奖励配置不一致")
     if saved.get("reward_spec_id") != getattr(spec, "spec_id", None):
         raise ValueError("Checkpoint与冻结奖励规范不一致")
-    validation = baseline_config["training"]["validation"]
+    if saved.get("baseline_evaluation_protocols") != baseline_config[
+        "evaluation_protocols"
+    ]:
+        raise ValueError("Checkpoint评估协议配置与当前配置不一致")
+    expected_weight_metadata = getattr(
+        trainer.reward_model,
+        "weight_metadata",
+        None,
+    )
+    if saved.get("llm_reward_weight_metadata") != expected_weight_metadata:
+        raise ValueError("Checkpoint的LLM有效权重元数据不一致")
+    protocol = build_evaluation_protocol(
+        protocol_name,
+        baseline_config["evaluation_protocols"],
+        trainer.environment.task_splits,
+    )
     return evaluator.evaluate(
-        validation["seeds"],
-        validation["task_count"],
         max_steps=max_steps,
+        protocol=protocol,
     )
 
 
@@ -105,8 +130,14 @@ def _evaluate_run(args, baseline_config, mappo_config):
             baseline_config,
             mappo_config,
             args.max_steps,
+            args.protocol,
         )
-        atomic_write_json(root / method.value / "evaluation.json", result)
+        evaluation_name = (
+            "test_evaluation.json"
+            if args.protocol == "test"
+            else "evaluation.json"
+        )
+        atomic_write_json(root / method.value / evaluation_name, result)
         records.append(
             {
                 "method": method.value,
@@ -123,19 +154,26 @@ def _evaluate_run(args, baseline_config, mappo_config):
     evaluated = [
         item for item in records if item["status"] == "evaluated"
     ]
-    ranking = sorted(
+    rule = normalize_selection_rule(
+        baseline_config["best_model_rule"]["metrics"]
+    )
+    ranking = rank_validation_results(
         evaluated,
-        key=lambda item: (
-            -item["timeliness_raw_mean"],
-            -item["load_balance_mean_per_task_mean"],
-        ),
+        rule=rule,
     )
     comparison = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
+        "selection_rule": rule,
+        "evaluation_protocol": args.protocol,
         "methods": records,
         "validation_ranking": [item["method"] for item in ranking],
     }
-    atomic_write_json(root / "comparison.json", comparison)
+    comparison_name = (
+        "test_comparison.json"
+        if args.protocol == "test"
+        else "comparison.json"
+    )
+    atomic_write_json(root / comparison_name, comparison)
     print(json.dumps(comparison, ensure_ascii=False))
 
 
@@ -162,8 +200,12 @@ def main():
         baseline_config,
         mappo_config,
         args.max_steps,
+        args.protocol,
     )
-    output = Path(args.output or "evaluation.json")
+    default_output = (
+        "test_evaluation.json" if args.protocol == "test" else "evaluation.json"
+    )
+    output = Path(args.output or default_output)
     atomic_write_json(output, result)
     print(json.dumps(result["aggregate"], ensure_ascii=False))
 

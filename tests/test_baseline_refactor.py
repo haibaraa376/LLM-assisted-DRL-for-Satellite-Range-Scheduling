@@ -111,7 +111,7 @@ def test_log_schema_has_explicit_training_reward_and_rejects_invalid_values():
     assert "total_manual_reward" not in episode
     assert episode["total_training_reward"] == pytest.approx(1.25)
     assert update["total_training_reward"] == pytest.approx(1.25)
-    assert episode["log_schema_version"] == "2.0"
+    assert episode["log_schema_version"] == "2.1"
     with pytest.raises(ValueError, match="NaN|Inf"):
         build_episode_log_record({}, reward, float("nan"), {})
 
@@ -156,7 +156,7 @@ def test_legacy_log_normalization_is_read_only(
     assert normalized["reward_method"] == expected_method
     assert normalized["base_reward_sum"] == pytest.approx(expected_base)
     assert normalized["shaping_reward_sum"] == pytest.approx(expected_shaping)
-    assert normalized["log_schema_version"] == "2.0"
+    assert normalized["log_schema_version"] == "2.1"
 
 
 def test_legacy_log_rejects_inconsistent_reward_decomposition():
@@ -169,6 +169,19 @@ def test_legacy_log_rejects_inconsistent_reward_decomposition():
                 "lyapunov_shaping_sum": 1.0,
             }
         )
+
+
+def test_log_schema_20_is_read_as_21_without_fabricated_diagnostics():
+    record = {
+        "log_schema_version": "2.0",
+        "total_training_reward": 1.0,
+        "base_reward_sum": 1.0,
+        "shaping_reward_sum": 0.0,
+    }
+    normalized = normalize_episode_log_record(record)
+    assert normalized["source_log_schema_version"] == "2.0"
+    assert normalized["normalized_log_schema_version"] == "2.1"
+    assert "reward_component_abs_sums" not in normalized
 
 
 def test_reward_spec_registration_is_atomic_and_does_not_change_source(tmp_path):
