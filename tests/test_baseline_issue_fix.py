@@ -128,24 +128,71 @@ def test_llm_weights_match_manual_l1_without_mutating_raw_spec():
     assert spec.to_dict() == original
 
 
-def test_candidate_eligibility_rejects_dominant_reward_component():
+def test_candidate_eligibility_records_dominant_reward_component_as_warning():
     config = load_baseline_config()["candidate_eligibility"]
     summary = {
+        "candidate_id": "candidate_dominant",
+        "episodes_run": 2,
         "best_validation_scenarios": [{"full_episode": True}],
         "best_validation_data_conservation": True,
-        "reward_diagnostics": {"maximum_single_component_dominance": 0.91},
+        "reward_diagnostics": {
+            "maximum_single_component_dominance": 0.91,
+            "llm_contribution_ratio": 0.2,
+            "max_component_share": 0.91,
+        },
     }
     validation = {"accepted_sgl_count_mean": 2.0}
-    result = assess_candidate_eligibility(summary, validation, config)
-    assert result["eligible"] is False
-    assert result["checks"]["reward_dominance"] is False
+    result = assess_candidate_eligibility(
+        summary,
+        validation,
+        config,
+        selection_window={
+            "eligible": True,
+            "aggregated_diagnostics": summary["reward_diagnostics"],
+            "tail_episode_records": [
+                {"full_episode": True, "data_conservation_passed": True},
+                {"full_episode": True, "data_conservation_passed": True},
+            ],
+        },
+    )
+    assert result["passed"] is True
+    assert result["eligible"] is True
+    assert result["warnings"] == ["max_component_share_above_threshold"]
+
+
+def test_candidate_eligibility_rejects_data_conservation_failure():
+    config = load_baseline_config()["candidate_eligibility"]
+    summary = {
+        "episodes_run": 2,
+        "best_validation_data_conservation": False,
+    }
+    result = assess_candidate_eligibility(
+        summary,
+        {"accepted_sgl_count_mean": 2.0},
+        config,
+        selection_window={
+            "eligible": True,
+            "tail_episode_records": [
+                {"full_episode": True, "data_conservation_passed": False},
+                {"full_episode": True, "data_conservation_passed": False},
+            ],
+        },
+    )
+    assert result["passed"] is False
+    assert "data_conservation_failed" in result["reasons"]
 
 
 def test_reward_dominance_uses_only_eight_weighted_components():
     record = {
         "reward_component_abs_sums": {
             "weighted_sgl_progress": 9.0,
+            "weighted_relay_progress": 0.0,
             "weighted_completion": 1.0,
+            "weighted_balance": 0.0,
+            "weighted_expiration": 0.0,
+            "weighted_invalid_action": 0.0,
+            "weighted_coordination_conflict": 0.0,
+            "weighted_relay_cost": 0.0,
             "total_reward": 1000.0,
             "backlog": 1000.0,
         }

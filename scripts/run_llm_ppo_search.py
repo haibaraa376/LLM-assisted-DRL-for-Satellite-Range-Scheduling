@@ -18,11 +18,11 @@ def parse_args():
     parser.add_argument("--live-api", action="store_true")
     parser.add_argument("--rounds", type=int, default=5)
     parser.add_argument("--candidates-per-round", type=int, default=8)
-    parser.add_argument("--candidate-episodes", type=int, default=2)
+    parser.add_argument("--alpha", type=float)
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--config", default="configs/baselines.yaml")
     parser.add_argument("--mappo-config", default="configs/mappo.yaml")
-    parser.add_argument("--output-dir", default="results/baselines/llm_search/llmppo_5r8c_formal_v1")
+    parser.add_argument("--output-dir")
     return parser.parse_args()
 
 
@@ -30,18 +30,24 @@ def main():
     args = parse_args()
     baseline_config = deepcopy(load_baseline_config(args.config))
     mappo_config = load_mappo_config(args.mappo_config)
-    validate_baseline_config(baseline_config, mappo_config)
     llm = baseline_config["methods"]["llm_ppo"]
+    # API预算属于LLM搜索配置；真实Provider确认和工作流共用同一份配置。
     search = llm["search"]
-    rounds = args.rounds or int(search["rounds"])
-    candidates = args.candidates_per_round or int(search["candidates_per_round"])
-    candidate_episodes = args.candidate_episodes or int(
-        search["candidate_training_episodes"]
+    if args.alpha is not None:
+        baseline_config["reward_composition"]["alpha"] = args.alpha
+    # 所有CLI覆盖写回配置后再统一校验，避免无效参数绕过约束。
+    validate_baseline_config(baseline_config, mappo_config)
+    rounds = int(args.rounds)
+    candidates = int(args.candidates_per_round)
+    candidate_episodes = int(
+        baseline_config["staged_search"]["max_episodes_per_candidate"]
     )
+    if any(value <= 0 for value in (rounds, candidates, candidate_episodes)):
+        raise ValueError("--rounds、--candidates-per-round和--candidate-episodes必须为正整数")
     output = Path(
         args.output_dir
         or Path(baseline_config["output"]["llm_search_directory"])
-        / datetime.now().strftime("%Y%m%d_%H%M%S_search")
+        / ("staged_" + datetime.now().strftime("%Y%m%d_%H%M%S"))
     )
     if output.exists():
         raise FileExistsError("LLM搜索目录已存在，拒绝覆盖")
@@ -73,6 +79,7 @@ def main():
         live_api_approval=approval,
     )
     print("已选择奖励规范：{0}".format(selected))
+    print("全局最佳候选：{0}".format(summary["global_best_candidate_id"]))
     print(json.dumps(summary, ensure_ascii=False))
 
 

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 
 from mappo.manual_reward import RewardBreakdown, combine_manual_reward
 from mappo.reward_metadata import RewardLogMetadata
@@ -64,32 +65,90 @@ class LlmRewardBreakdown:
 
     base: RewardBreakdown
     reward_spec_id: str
+    llm_reward: float
+    alpha: float
+    llm_components: dict
 
     @property
     def total_reward(self):
-        return self.base.total_reward
+        return self.base.total_reward + self.alpha * self.llm_reward
 
     @property
     def features(self):
         return self.base.features
 
     def component_values(self):
-        return self.base.component_values()
+        return {
+            **self.base.component_values(),
+            **{
+                "llm_" + name: value
+                for name, value in self.llm_components.items()
+            },
+            "base_reward": self.base.total_reward,
+            "llm_reward": self.llm_reward,
+            "llm_shaping_reward": self.alpha * self.llm_reward,
+            "total_reward": self.total_reward,
+        }
 
 
 class LlmWeightReward:
-    """复用ManualReward特征提取器，只替换本地固定组合权重。"""
+    """固定核心任务底座，并把LLM八项权重作为有界附加塑形。"""
 
     environment_aware = True
 
-    def __init__(self, feature_extractor, reward_spec):
+    def __init__(self, feature_extractor, reward_spec, composition=None):
         self.feature_extractor = feature_extractor
         self.reward_spec = reward_spec
         self.reward_spec_id = reward_spec.spec_id
-        self.effective_weights, normalization = normalized_reward_spec_weights(
-            reward_spec,
-            feature_extractor.config["weights"],
-        )
+        composition = composition or {}
+        self.alpha = float(composition.get("alpha", 1.0))
+        if not math.isfinite(self.alpha) or self.alpha < 0.0:
+            raise ValueError("LLM塑形系数alpha必须为非负有限数")
+        raw = raw_reward_spec_weights(reward_spec)
+        raw_sum = sum(raw.values())
+        if not math.isfinite(raw_sum) or raw_sum <= 0.0:
+            raise ValueError("LLM八项原始权重之和必须为正有限数")
+        self.effective_weights = {
+            name: value / raw_sum for name, value in raw.items()
+        }
+        scales = composition.get("feature_scales") or {
+            "sgl_progress": 1.0,
+            "relay_progress": 1.0,
+            "completion_score": 1.0,
+            "balance_score": 1.0,
+            "expiration_loss": 1.0,
+            "invalid_action_rate": 1.0,
+            "coordination_conflict_rate": 1.0,
+            "relay_cost": 1.0,
+        }
+        if set(scales) != {
+            "sgl_progress", "relay_progress", "completion_score", "balance_score",
+            "expiration_loss", "invalid_action_rate", "coordination_conflict_rate", "relay_cost",
+        }:
+            raise ValueError("LLM特征缩放必须完整包含八项RewardFeatures")
+        self.feature_scales = {name: float(value) for name, value in scales.items()}
+        if not all(math.isfinite(value) and value > 0.0 for value in self.feature_scales.values()):
+            raise ValueError("LLM特征缩放必须为正有限数")
+        manual = feature_extractor.config["weights"]
+        self.base_weights = {
+            "sgl_progress": manual["sgl_progress"], "relay_progress": 0.0,
+            "completion": manual["completion"], "balance": 0.0,
+            "expiration": manual["expiration"], "invalid_action": 0.0,
+            "coordination_conflict": 0.0, "relay_cost": 0.0,
+        }
+        normalization = {
+            "normalization_mode": "l1_unit_base_plus_llm",
+            "normalization_factor": 1.0 / raw_sum,
+            "raw_weight_l1": raw_sum,
+            "effective_weight_l1": 1.0,
+            "raw_weights": raw,
+            "effective_weights": self.effective_weights,
+            "alpha": self.alpha,
+            "base_features": ["sgl_progress", "completion_score", "expiration_loss"],
+        }
+        normalization["effective_weights_sha256"] = hashlib.sha256(
+            json.dumps(self.effective_weights, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
         self.weight_metadata = {
             "reward_spec_id": reward_spec.spec_id,
             **normalization,
@@ -103,15 +162,69 @@ class LlmWeightReward:
         self.last_breakdown = None
 
     def compute(self, environment, info):
-        """提取完全相同的特征，并应用经Schema验证的八项权重。"""
+        """计算 R_total = R_base + alpha * R_llm，二者职责相互独立。"""
         extracted = self.feature_extractor.compute(environment, info)
         base = combine_manual_reward(
             extracted.features,
-            self.effective_weights,
+            self.base_weights,
             self.feature_extractor.config["numerical"],
         )
-        breakdown = LlmRewardBreakdown(base, self.reward_spec_id)
-        if abs(base.total_reward) > self.feature_extractor.config["numerical"][
+        feature_values = extracted.features.__dict__
+        normalized = {
+            name: max(0.0, min(1.0, feature_values[name] / self.feature_scales[name]))
+            for name in self.feature_scales
+            if name != "balance_score"
+        }
+        normalized["balance_score"] = max(
+            -1.0,
+            min(1.0, feature_values["balance_score"] / self.feature_scales["balance_score"]),
+        )
+        # 分量单独保存，既能复核固定正负方向，也能计算候选的实际塑形贡献。
+        llm_components = {
+            "sgl_progress": (
+                self.effective_weights["sgl_progress"]
+                * normalized["sgl_progress"]
+            ),
+            "relay_progress": (
+                self.effective_weights["relay_progress"]
+                * normalized["relay_progress"]
+            ),
+            "completion": (
+                self.effective_weights["completion"]
+                * normalized["completion_score"]
+            ),
+            "balance": (
+                self.effective_weights["balance"]
+                * normalized["balance_score"]
+            ),
+            "expiration": (
+                -self.effective_weights["expiration"]
+                * normalized["expiration_loss"]
+            ),
+            "invalid_action": (
+                -self.effective_weights["invalid_action"]
+                * normalized["invalid_action_rate"]
+            ),
+            "coordination_conflict": (
+                -self.effective_weights["coordination_conflict"]
+                * normalized["coordination_conflict_rate"]
+            ),
+            "relay_cost": (
+                -self.effective_weights["relay_cost"]
+                * normalized["relay_cost"]
+            ),
+        }
+        llm_reward = sum(llm_components.values())
+        if not math.isfinite(llm_reward) or not -1.0 <= llm_reward <= 1.0:
+            raise RuntimeError("归一化LLM塑形奖励必须位于[-1,1]")
+        breakdown = LlmRewardBreakdown(
+            base,
+            self.reward_spec_id,
+            llm_reward,
+            self.alpha,
+            llm_components,
+        )
+        if abs(breakdown.total_reward) > self.feature_extractor.config["numerical"][
             "warning_abs_reward"
         ]:
             self.warning_count += 1

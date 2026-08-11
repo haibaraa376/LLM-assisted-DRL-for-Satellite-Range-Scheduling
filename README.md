@@ -204,3 +204,27 @@ LLM 权重规范原文和 `spec_id` 保持不变；训练前仅做 L1 尺度归�
 有效权重之和与人工奖励一致。日志、摘要和 Checkpoint 会记录原始/有效权重、
 归一化因子及有效权重哈希。PPO-Lya 的四项势函数权重
 `0.45/0.35/0.10/0.10` 以及已过期未送达债务同样属于复现补充设置。
+
+## 全局奖励候选归档与 HERON-inspired 筛选
+
+`scripts/run_llm_ppo_search.py` 的正式默认值为 **5 轮 × 每轮 8 个候选 ×
+每候选 5 个完整 Episode**。候选排名只聚合最后 3 个完整 Episode 的 validation
+均值，避免某个早期偶然峰值决定奖励函数。每轮仍将本轮最佳候选作为下一轮提示词的父候选，
+但最终会从全部合格候选中按 `heron_hierarchical` 规则冻结全局最佳，而不是机械
+采用最后一轮结果。
+
+完整搜索输出中，`global_candidate_archive.jsonl` 保存所有候选（包括诊断或资格
+失败项）；`global_ranking.json`、`global_best_candidate.json` 和
+`selection_traces/` 保存可审计排名；根目录的 `selected_reward_spec.json` 与
+`selected_checkpoint.pt` 始终来自同一个全局最佳候选。候选目录中的
+`checkpoints/episode_0001.pt` 等仅在完整 Episode、守恒检查、日志和验证完成后
+生成，短截断 smoke 不会被误写为正式检查点。
+
+每个候选还会保存 `learning_curve.json`、`learning_curve.csv` 和
+`learning_curve.png`。曲线直接来自训练日志及当次 validation，不会为绘图重新运行
+环境。HERON-inspired 层级依次比较完成率、过期率、最终 SGL 送达及时性、送达
+数据量、拒绝动作率、任务均衡度和 SGL 动作占比；每层使用
+`max(绝对门槛，相对门槛，std_scale × sqrt(std_A² + std_B²))` 判断是否存在显著
+差异，全部等价时按 `reward_spec_id`、`candidate_id` 稳定裁决。这是透明的启发式
+候选评价，不是完整 HERON 偏好奖励模型复现。将 `best_model_rule.mode` 改为
+`tolerance_lexicographic` 可重用旧的固定容差字典序。

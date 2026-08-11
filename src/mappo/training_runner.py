@@ -1,8 +1,10 @@
 """调度任意基线奖励的完整Episode、固定验证及边界Checkpoint。"""
 
+import csv
 import json
 import math
 from pathlib import Path
+import shutil
 
 import numpy as np
 import torch
@@ -88,21 +90,50 @@ class BaselineTrainingRunner:
         critic_initial = parameter_vector(self.trainer.critic)
         total_steps_before = self.trainer.environment_steps
         episode_records = []
-        protocol_name = self.training["validation"]["protocol"]
-        selection_protocol = build_evaluation_protocol(
-            protocol_name,
-            self.training["evaluation_protocols"],
-            self.trainer.environment.task_splits,
+        # 早期手工 MAPPO 测试可显式跳过验证，且其旧配置没有协议字段。
+        selection_protocol = None
+        protocol_metadata = None
+        if not skip_validation:
+            protocol_name = self.training["validation"]["protocol"]
+            selection_protocol = build_evaluation_protocol(
+                protocol_name,
+                self.training["evaluation_protocols"],
+                self.trainer.environment.task_splits,
+            )
+            protocol_metadata = public_protocol_metadata(selection_protocol)
+
+        # 固定任务诊断只在这里采样一次训练任务；后续Episode显式传入相同
+        # task_ids，正常训练未设置 fixed_task_seed 时仍按Episode换任务。
+        fixed_task_seed = self.training.get("fixed_task_seed")
+        fixed_task_ids = None
+        if fixed_task_seed is not None:
+            fixed_task_seed = int(fixed_task_seed)
+            _, fixed_reset_info = self.trainer.environment.reset(
+                seed=fixed_task_seed,
+                split="train",
+                task_count=self.training["task_count"],
+            )
+            fixed_task_ids = tuple(fixed_reset_info["selected_task_ids"])
+            if len(fixed_task_ids) != int(self.training["task_count"]):
+                raise RuntimeError("固定训练任务数量与task_count不一致")
+        store_validation_details = bool(
+            self.training.get("store_validation_details", True)
         )
-        protocol_metadata = public_protocol_metadata(selection_protocol)
 
         for episode_index in range(start_episode_index, target):
-            episode_seed = self.training["base_episode_seed"] + episode_index
-            reset_info = self.trainer.reset_episode(
-                episode_seed,
-                "train",
-                self.training["task_count"],
-            )
+            if fixed_task_ids is None:
+                episode_seed = self.training["base_episode_seed"] + episode_index
+                reset_info = self.trainer.reset_episode(
+                    episode_seed,
+                    "train",
+                    self.training["task_count"],
+                )
+            else:
+                episode_seed = fixed_task_seed
+                reset_info = self.trainer.reset_episode(
+                    episode_seed,
+                    task_ids=fixed_task_ids,
+                )
             episode_steps = 0
             episode_updates = 0
             episode_reward_sum = 0.0
@@ -305,7 +336,7 @@ class BaselineTrainingRunner:
                 is_new_best = is_better_validation_result(
                     candidate,
                     best_validation_result,
-                    self.training["best_model_rule"]["metrics"],
+                    self.training["best_model_rule"],
                 )
                 validation_record = {
                     "episode_index": episode_index,
@@ -320,7 +351,9 @@ class BaselineTrainingRunner:
                 if is_new_best:
                     best_validation_result = candidate
                     best_episode_index = episode_index
-                    best_validation_details = validation_result
+                    best_validation_details = (
+                        validation_result if store_validation_details else None
+                    )
 
             training_state = {
                 "episode_index": episode_index,
@@ -331,23 +364,63 @@ class BaselineTrainingRunner:
                 "best_episode_index": best_episode_index,
                 "best_validation_details": best_validation_details,
                 "evaluation_protocol": protocol_metadata,
+                # 候选身份和有效权重在 config 中冻结，便于单独恢复阶段状态。
+                "candidate_id": self.config.get("candidate_id"),
+                "reward_spec_id": self.config.get("reward_spec_id"),
             }
             rng_state = capture_rng_state(self.trainer.rng)
+            checkpoint_validation = validation_result
+            if validation_result is not None and not store_validation_details:
+                # 诊断实验仍基于完整固定validation选best，但Checkpoint不保存
+                # 场景级任务ID，只保留选择所需的聚合结果和协议摘要。
+                checkpoint_validation = {
+                    "aggregate": validation_result["aggregate"],
+                    "all_scenarios_data_conservation_passed": (
+                        validation_result[
+                            "all_scenarios_data_conservation_passed"
+                        ]
+                    ),
+                    "protocol": validation_result.get("protocol"),
+                }
             if is_new_best:
                 self._save_boundary_checkpoint(
                     self.training["checkpoint"]["best_path"],
                     update_index,
                     training_state,
                     rng_state,
-                    validation_result,
+                    checkpoint_validation,
                 )
             self._save_boundary_checkpoint(
                 self.training["checkpoint"]["last_path"],
                 update_index,
                 training_state,
                 rng_state,
-                validation_result,
+                checkpoint_validation,
             )
+            stage_path = None
+            # 只有完整 Episode、守恒检查和当次日志完成后才保存正式阶段状态。
+            if (
+                full_episode
+                and self.training.get("save_episode_checkpoints", False)
+            ):
+                stage_path = Path(self.training["checkpoint"]["stage_directory"]) / (
+                    "episode_{0:04d}.pt".format(episode_index + 1)
+                )
+                if stage_path.exists():
+                    raise FileExistsError("阶段Checkpoint已存在，拒绝覆盖：{0}".format(stage_path))
+                self._save_boundary_checkpoint(
+                    stage_path,
+                    update_index,
+                    training_state,
+                    rng_state,
+                    checkpoint_validation,
+                )
+            episode_record["checkpoint_path"] = str(stage_path) if stage_path else None
+            episode_record["official_experiment"] = max_steps_per_episode is None
+            episode_record["validation"] = (
+                validation_result["aggregate"] if validation_result else None
+            )
+            episode_record["is_new_candidate_best"] = is_new_best
 
         actor_change = float(
             torch.linalg.vector_norm(
@@ -373,6 +446,8 @@ class BaselineTrainingRunner:
             "critic_parameter_change_norm": critic_change,
             "best_episode_index": best_episode_index,
             "best_validation_result": best_validation_result,
+            # ORSO分段续训需要保留最佳验证细节，避免后续阶段把守恒状态误判为缺失。
+            "best_validation_details": best_validation_details,
             "best_validation_scenarios": (
                 best_validation_details.get("scenarios", [])
                 if best_validation_details
@@ -396,16 +471,205 @@ class BaselineTrainingRunner:
                 None,
             ),
         }
+        curve_paths = self._write_learning_curves(episode_records, resume=resume)
+        summary["episode_checkpoint_paths"] = [
+            record["checkpoint_path"] for record in episode_records
+            if record.get("checkpoint_path")
+        ]
+        summary["learning_curve_paths"] = curve_paths
         Path(self.training["logging"]["summary_path"]).write_text(
             json.dumps(summary, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         return summary
 
+    def _write_learning_curves(self, episode_records, resume=False):
+        """从已写出的训练/验证记录生成曲线，绝不重新运行环境。"""
+        if not self.training.get("write_learning_curves", False):
+            return {}
+        root = Path(self.training["logging"]["summary_path"]).parent
+        json_path = root / "learning_curve.json"
+        csv_path, png_path = root / "learning_curve.csv", root / "learning_curve.png"
+        points = []
+        if resume and json_path.is_file():
+            points = json.loads(json_path.read_text(encoding="utf-8"))
+        elif resume and csv_path.is_file():
+            # 完成Run会删除详细JSON；续训时从保留的精简CSV恢复曲线历史。
+            points = self._points_from_compact_curve(csv_path)
+        for record in episode_records:
+            point = {
+                key: record.get(key)
+                for key in (
+                    "episode_index", "episode_seed", "environment_steps", "update_count",
+                    "mean_step_reward", "reward_component_sums", "reward_component_abs_sums",
+                    "maximum_single_component_dominance", "accepted_subaction_count",
+                    "rejected_subaction_count", "accepted_isl_count", "accepted_idl_count",
+                    "accepted_sgl_count", "timeliness_raw", "delivered_timeliness_raw",
+                    "completed_task_count", "expired_task_count", "delivered_data_mbit",
+                    "load_balance_mean_per_task", "checkpoint_path", "full_episode",
+                    "data_conservation_passed", "official_experiment", "is_new_candidate_best",
+                )
+            }
+            validation = record.get("validation") or {}
+            # 保留原始每 Episode validation，候选筛选可直接做尾部窗口聚合。
+            point["validation"] = validation or None
+            for name in (
+                "delivered_timeliness_raw", "completion_rate", "expiration_rate",
+                "delivered_data_mbit", "rejected_subaction_rate",
+                "load_balance_mean_per_task", "sgl_action_fraction", "accepted_sgl_count",
+            ):
+                point[name + "_mean"] = validation.get(name + "_mean")
+                point[name + "_std"] = validation.get(name + "_std")
+            points.append(point)
+        json_path.write_text(json.dumps(points, ensure_ascii=False, indent=2), encoding="utf-8")
+        # CSV 将嵌套奖励分量转为 JSON 字符串，以保留完整八项分量且便于表格查看。
+        columns = sorted({key for point in points for key in point})
+        with csv_path.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=columns)
+            writer.writeheader()
+            for point in points:
+                writer.writerow({key: json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else value for key, value in point.items()})
+        self._plot_learning_curve(points, png_path)
+        return {"json": str(json_path), "csv": str(csv_path), "png": str(png_path)}
+
+    @staticmethod
+    def _points_from_compact_curve(csv_path):
+        """把完成Run保留的简洁曲线还原为可追加的内部点。"""
+        metric_map = {
+            "completion": "completion_rate",
+            "expiration": "expiration_rate",
+            "timeliness": "delivered_timeliness_raw",
+            "data_mbit": "delivered_data_mbit",
+            "reject_rate": "rejected_subaction_rate",
+            "balance": "load_balance_mean_per_task",
+            "sgl_fraction": "sgl_action_fraction",
+        }
+        points = []
+        with Path(csv_path).open(encoding="utf-8", newline="") as stream:
+            for row in csv.DictReader(stream):
+                point = {
+                    "episode_index": int(row["episode"]) - 1,
+                    "episode_seed": int(row["seed"]),
+                    "environment_steps": int(row["environment_steps"]),
+                    "update_count": int(row["updates"]),
+                    "mean_step_reward": float(row["mean_step_reward"]),
+                    "accepted_isl_count": int(row["accepted_isl"]),
+                    "accepted_idl_count": int(row["accepted_idl"]),
+                    "accepted_sgl_count": int(row["accepted_sgl"]),
+                    "full_episode": row["full_episode"].lower() == "true",
+                    "data_conservation_passed": (
+                        row["data_conservation_passed"].lower() == "true"
+                    ),
+                }
+                for prefix, metric in metric_map.items():
+                    point[metric + "_mean"] = float(row[prefix + "_mean"])
+                    point[metric + "_std"] = float(row[prefix + "_std"])
+                points.append(point)
+        return points
+
+    @staticmethod
+    def compact_completed_artifacts(output_directory):
+        """压缩已完成方法的详细日志，保留可读曲线、关键摘要和恢复Checkpoint。"""
+        root = Path(output_directory)
+        source = root / "learning_curve.json"
+        if source.is_file():
+            points = json.loads(source.read_text(encoding="utf-8"))
+            columns = (
+                "episode", "seed", "environment_steps", "updates",
+                "mean_step_reward", "completion_mean", "completion_std",
+                "expiration_mean", "expiration_std", "timeliness_mean",
+                "timeliness_std", "data_mbit_mean", "data_mbit_std",
+                "reject_rate_mean", "reject_rate_std", "balance_mean",
+                "balance_std", "sgl_fraction_mean", "sgl_fraction_std",
+                "accepted_isl", "accepted_idl", "accepted_sgl",
+                "full_episode", "data_conservation_passed",
+            )
+            with (root / "learning_curve.csv").open(
+                "w", encoding="utf-8", newline=""
+            ) as stream:
+                writer = csv.DictWriter(stream, fieldnames=columns)
+                writer.writeheader()
+                for point in points:
+                    writer.writerow({
+                        "episode": int(point["episode_index"]) + 1,
+                        "seed": point["episode_seed"],
+                        "environment_steps": point["environment_steps"],
+                        "updates": point["update_count"],
+                        "mean_step_reward": point["mean_step_reward"],
+                        "completion_mean": point["completion_rate_mean"],
+                        "completion_std": point["completion_rate_std"],
+                        "expiration_mean": point["expiration_rate_mean"],
+                        "expiration_std": point["expiration_rate_std"],
+                        "timeliness_mean": point["delivered_timeliness_raw_mean"],
+                        "timeliness_std": point["delivered_timeliness_raw_std"],
+                        "data_mbit_mean": point["delivered_data_mbit_mean"],
+                        "data_mbit_std": point["delivered_data_mbit_std"],
+                        "reject_rate_mean": point["rejected_subaction_rate_mean"],
+                        "reject_rate_std": point["rejected_subaction_rate_std"],
+                        "balance_mean": point["load_balance_mean_per_task_mean"],
+                        "balance_std": point["load_balance_mean_per_task_std"],
+                        "sgl_fraction_mean": point["sgl_action_fraction_mean"],
+                        "sgl_fraction_std": point["sgl_action_fraction_std"],
+                        "accepted_isl": point["accepted_isl_count"],
+                        "accepted_idl": point["accepted_idl_count"],
+                        "accepted_sgl": point["accepted_sgl_count"],
+                        "full_episode": point["full_episode"],
+                        "data_conservation_passed": point["data_conservation_passed"],
+                    })
+        summary_path = root / "summary.json"
+        if summary_path.is_file():
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            keep = (
+                "method", "device", "start_episode_index", "target_episode_count",
+                "episodes_run", "environment_steps_this_run", "total_update_index",
+                "actor_parameter_change_norm", "critic_parameter_change_norm",
+                "best_episode_index", "best_validation_result",
+                "best_validation_data_conservation", "shortened_acceptance_mode",
+                "data_conservation_passed", "evaluation_protocol", "reward_diagnostics",
+                "llm_reward_weight_metadata",
+            )
+            compact_summary = {name: summary[name] for name in keep if name in summary}
+            summary_path.write_text(
+                json.dumps(compact_summary, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        # 这些文件包含逐任务、逐更新或完整验证场景，不是完成训练后的必要结果。
+        for name in (
+            "learning_curve.json", "episodes.jsonl", "train_updates.jsonl",
+            "validation.jsonl",
+        ):
+            path = root / name
+            if path.exists():
+                path.unlink()
+        stage_directory = root / "checkpoints"
+        if stage_directory.exists():
+            shutil.rmtree(stage_directory)
+
+    @staticmethod
+    def _plot_learning_curve(points, path):
+        """以无交互后端输出核心验证指标图，适合服务器与 Windows 命令行。"""
+        try:
+            import matplotlib
+            matplotlib.use("Agg")
+            from matplotlib import pyplot as plt
+        except ImportError as error:
+            raise RuntimeError("学习曲线需要matplotlib，请安装项目依赖") from error
+        episodes = [point["episode_index"] + 1 for point in points]
+        metrics = ("completion_rate_mean", "expiration_rate_mean", "delivered_timeliness_raw_mean", "delivered_data_mbit_mean")
+        figure, axes = plt.subplots(2, 2, figsize=(10, 6), constrained_layout=True)
+        for axis, metric in zip(axes.flat, metrics):
+            values = [point.get(metric) for point in points]
+            axis.plot(episodes, values, marker="o")
+            axis.set_title(metric)
+            axis.set_xlabel("Episode")
+            axis.grid(alpha=0.3)
+        figure.savefig(path, dpi=150)
+        plt.close(figure)
+
     @staticmethod
     def _reward_diagnostics(episode_records):
-        """汇总八个带权奖励分量的绝对贡献及最大单项支配比例。"""
-        weighted_names = (
+        """汇总基础与LLM塑形的实际绝对贡献，供候选资格检查使用。"""
+        base_names = (
             "weighted_sgl_progress",
             "weighted_relay_progress",
             "weighted_completion",
@@ -415,20 +679,58 @@ class BaselineTrainingRunner:
             "weighted_coordination_conflict",
             "weighted_relay_cost",
         )
-        totals = {name: 0.0 for name in weighted_names}
+        llm_names = tuple("llm_" + name for name in (
+            "sgl_progress", "relay_progress", "completion", "balance",
+            "expiration", "invalid_action", "coordination_conflict", "relay_cost",
+        ))
+        # 人工/PPO-Lya历史记录没有LLM分量；一旦出现任一LLM字段则必须完整，
+        # 不能把漏记的塑形贡献静默当成零。
+        has_llm_components = any(
+            name.startswith("llm_")
+            for record in episode_records
+            for name in record.get("reward_component_abs_sums", {})
+        )
+        names = base_names + llm_names if has_llm_components else base_names
+        totals = {name: 0.0 for name in names}
         for record in episode_records:
             absolute = record.get("reward_component_abs_sums", {})
-            for name in weighted_names:
-                totals[name] += float(absolute.get(name, 0.0))
-        absolute_total = sum(totals.values())
+            for name in totals:
+                if name not in absolute:
+                    raise ValueError("奖励贡献日志缺少必要字段：{0}".format(name))
+                totals[name] += float(absolute[name])
+        base_abs_sum = sum(totals[name] for name in base_names)
+        llm_abs_sum = sum(totals[name] for name in llm_names if name in totals)
+        absolute_total = base_abs_sum + llm_abs_sum
         dominance = (
             max(totals.values()) / absolute_total
             if absolute_total > 0.0
             else 0.0
         )
+        component_shares = {
+            name: value / absolute_total if absolute_total > 0.0 else 0.0
+            for name, value in totals.items()
+        }
+        dominant_component = (
+            max(component_shares, key=component_shares.get)
+            if component_shares
+            else None
+        )
         return {
-            "weighted_component_abs_sums": totals,
+            "weighted_component_abs_sums": {
+                name: totals[name] for name in base_names
+            },
+            "llm_component_abs_sums": {
+                name: totals[name] for name in llm_names if name in totals
+            },
             "weighted_component_abs_total": absolute_total,
+            "base_abs_sum": base_abs_sum,
+            "llm_abs_sum": llm_abs_sum,
+            "total_abs_sum": absolute_total,
+            "llm_contribution_ratio": (
+                llm_abs_sum / absolute_total if absolute_total > 0.0 else 0.0
+            ),
+            "component_shares": component_shares,
+            "dominant_component": dominant_component,
             "maximum_single_component_dominance": dominance,
         }
 

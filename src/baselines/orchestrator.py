@@ -7,6 +7,7 @@ import time
 import torch
 
 from mappo.config import load_mappo_config
+from mappo.training_runner import BaselineTrainingRunner
 
 from .baseline_runner import (
     build_baseline_components,
@@ -251,6 +252,13 @@ class BaselineOrchestrator:
                 self.baseline_config["best_model_rule"]["metrics"],
                 "checkpoint_selection",
             )
+            if self.baseline_config["artifact_management"]["compact_completed_runs"]:
+                for method in methods:
+                    state = manifest["method_states"][method.value]
+                    if state.get("status") == "completed":
+                        BaselineTrainingRunner.compact_completed_artifacts(
+                            run_directory / method.value
+                        )
             summary = {
                 "schema_version": "1.0",
                 "run_id": manifest["run_id"],

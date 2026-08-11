@@ -46,8 +46,15 @@ def build_training_config(baseline_config, output_dir):
         "checkpoint": {
             "best_path": str(root / "best_checkpoint.pt"),
             "last_path": str(root / "last_checkpoint.pt"),
+            "stage_directory": str(root / "checkpoints"),
             "save_at_episode_boundary_only": True,
         },
+        "save_episode_checkpoints": bool(
+            baseline_config["artifact_management"]["save_episode_checkpoints"]
+        ),
+        "write_learning_curves": bool(
+            baseline_config["artifact_management"]["write_learning_curves"]
+        ),
         "logging": {
             "update_log_path": str(root / "train_updates.jsonl"),
             "episode_log_path": str(root / "episodes.jsonl"),
@@ -101,7 +108,11 @@ def build_baseline_components(
     else:
         if reward_spec is None:
             raise ValueError("LLM-PPO必须提供冻结reward spec")
-        reward_model = LlmWeightReward(manual, reward_spec)
+        reward_model = LlmWeightReward(
+            manual,
+            reward_spec,
+            baseline_config.get("reward_composition"),
+        )
         config["reward_spec_id"] = reward_spec.spec_id
         config["llm_reward_weight_metadata"] = deepcopy(
             reward_model.weight_metadata
@@ -119,7 +130,15 @@ def build_baseline_components(
     return config, encoder, actor, critic, trainer, evaluator
 
 
-def restore_baseline_checkpoint(path, actor, critic, trainer, encoder, method):
+def restore_baseline_checkpoint(
+    path,
+    actor,
+    critic,
+    trainer,
+    encoder,
+    method,
+    protocol_name="checkpoint_selection",
+):
     """恢复边界Checkpoint并校验方法与冻结奖励标识。"""
     checkpoint = load_checkpoint(
         path,
@@ -152,7 +171,7 @@ def restore_baseline_checkpoint(path, actor, critic, trainer, encoder, method):
     if not isinstance(state, dict):
         raise ValueError("基线Resume需要Episode边界Checkpoint")
     protocol = build_evaluation_protocol(
-        "checkpoint_selection",
+        protocol_name,
         trainer.config["baseline_evaluation_protocols"],
         trainer.environment.task_splits,
     )

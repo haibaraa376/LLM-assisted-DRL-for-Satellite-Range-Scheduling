@@ -59,6 +59,11 @@ def _base_prompt(current_weights, training_summary, parent_candidate_id):
 
 {features}
 
+固定基础奖励（不得覆盖）：
+R_base = 1.0 * sgl_progress + 0.5 * completion_score - 0.5 * expiration_loss。
+最终奖励为 R_total = R_base + 0.20 * R_llm；你生成的八项权重只定义R_llm，
+不会删除、替换或改变R_base。所有八项特征先缩放并裁剪到有界范围，权重会做L1归一化。
+
 当前人工奖励权重JSON：
 {weights}
 
@@ -69,6 +74,7 @@ def _base_prompt(current_weights, training_summary, parent_candidate_id):
 
 严格要求：只输出JSON；八项权重必须齐全且在[0,3]；不得改变四项正奖励和
 四项惩罚的符号；不得新增字段、代码、函数、import、路径或Markdown代码块。
+优先提高完成率、降低过期率和改善最终下传；不要通过减少必要ISL/IDL动作来虚假降低冲突。
 完整JSON格式示例：
 {example}
 """.format(
@@ -108,6 +114,8 @@ def build_feedback_reward_prompt(
                 {},
             ),
             "episodes_run": parent_training_summary.get("episodes_run"),
+            "raw_weights": (parent_training_summary.get("llm_reward_weight_metadata") or {}).get("raw_weights"),
+            "effective_weights": current_weights,
         },
         "validation": {
             name: validation_summary.get(name)
@@ -119,6 +127,21 @@ def build_feedback_reward_prompt(
             "中继成本",
             "最终送达",
         ],
+        "tail_behavior_delta": parent_training_summary.get("tail_behavior_delta", {
+            "delta_completion": None,
+            "delta_expiration": None,
+            "delta_timeliness": None,
+            "delta_data": None,
+            "delta_isl": None,
+            "delta_idl": None,
+            "delta_sgl": None,
+            "delta_reject_rate": None,
+            "delta_llm_contribution_ratio": None,
+        }),
+        "anti_gaming_note": (
+            "SGL比例升高但SGL绝对数量未升高、且ISL/IDL大幅下降时，"
+            "可能是保守策略投机；冲突下降必须结合完成率和下传量判断。"
+        ),
         "instruction": "在rationale中说明相对父候选的权重修改原因",
     }
     return _base_prompt(current_weights, feedback, parent_candidate_id)

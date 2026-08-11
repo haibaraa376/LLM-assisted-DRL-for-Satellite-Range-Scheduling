@@ -130,10 +130,22 @@ def validate_baseline_config(config, mappo_config=None):
         _finite_number(search[name], "search.{0}".format(name), positive=True)
     if search["evaluation_protocol"] != "reward_search":
         raise ValueError("LLM候选搜索必须使用reward_search协议")
+    selection = config["candidate_selection"]
+    _finite_number(selection["tail_episodes"], "候选尾部Episode数", positive=True)
+    if int(selection["tail_episodes"]) > int(search["candidate_training_episodes"]):
+        raise ValueError("候选尾部Episode数不得超过候选训练Episode数")
 
-    from mappo.model_selection import normalize_selection_rule
+    from mappo.model_selection import normalize_best_model_rule
 
-    normalize_selection_rule(config["best_model_rule"]["metrics"])
+    normalize_best_model_rule(config["best_model_rule"])
+    artifacts = config.get("artifact_management", {})
+    for name in (
+        "save_episode_checkpoints",
+        "write_learning_curves",
+        "compact_completed_runs",
+    ):
+        if not isinstance(artifacts.get(name), bool):
+            raise ValueError("artifact_management.{0}必须是布尔值".format(name))
     eligibility = config["candidate_eligibility"]
     _finite_number(
         eligibility["minimum_accepted_sgl_mean"],
@@ -144,3 +156,46 @@ def validate_baseline_config(config, mappo_config=None):
     _finite_number(dominance, "候选奖励支配阈值", positive=True)
     if dominance > 1.0:
         raise ValueError("候选奖励支配阈值不得超过1")
+    llm_ratio = eligibility["maximum_llm_contribution_ratio"]
+    _finite_number(llm_ratio, "候选LLM贡献阈值", nonnegative=True)
+    if llm_ratio > 1.0:
+        raise ValueError("候选LLM贡献阈值不得超过1")
+    composition = config["reward_composition"]
+    if composition["mode"] != "base_plus_llm":
+        raise ValueError("LLM奖励组合模式必须是base_plus_llm")
+    _finite_number(composition["alpha"], "LLM塑形alpha", nonnegative=True)
+    if composition["base"] != {
+        "source": "manual_reward",
+        "features": ["sgl_progress", "completion_score", "expiration_loss"],
+    }:
+        raise ValueError("基础奖励必须固定为人工SGL、完成和过期三项")
+    for name, value in composition["feature_scales"].items():
+        _finite_number(value, "LLM特征缩放.{0}".format(name), positive=True)
+    if len(composition["feature_scales"]) != 8:
+        raise ValueError("LLM特征缩放必须恰好包含八项")
+    staged = config["staged_search"]
+    if staged["enabled"] is not True:
+        raise ValueError("LLM候选筛选必须启用固定分阶段流程")
+    for name in (
+        "initial_episodes", "keep_after_stage_1", "extra_episodes_stage_2",
+        "keep_after_stage_2", "extra_episodes_stage_3", "keep_after_stage_3",
+        "confirmation_episodes", "max_episodes_per_candidate",
+    ):
+        _finite_number(staged[name], "staged_search.{0}".format(name), positive=True)
+    if int(staged["initial_episodes"]) < 2:
+        raise ValueError("第一阶段至少需要两个完整Episode")
+    expected_total = (
+        int(staged["initial_episodes"])
+        + int(staged["extra_episodes_stage_2"])
+        + int(staged["extra_episodes_stage_3"])
+        + int(staged["confirmation_episodes"])
+    )
+    if expected_total != int(staged["max_episodes_per_candidate"]):
+        raise ValueError("分阶段Episode总数必须等于候选最大Episode数")
+    if not (
+        int(search["candidates_per_round"])
+        >= int(staged["keep_after_stage_1"])
+        >= int(staged["keep_after_stage_2"])
+        >= int(staged["keep_after_stage_3"])
+    ):
+        raise ValueError("分阶段保留数量必须单调且不超过每轮候选数")

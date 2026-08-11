@@ -52,7 +52,7 @@ baselines:
       search:
         rounds: 5
         candidates_per_round: 8
-        candidate_training_episodes: 2
+        candidate_training_episodes: 5
         candidate_task_count: 200
         common_training_seeds: [2025]
         evaluation_protocol: reward_search
@@ -87,6 +87,18 @@ baselines:
       seeds: [5025, 5026, 5027, 5028, 5029]
 
   best_model_rule:
+    # HERON-inspired：先比较任务是否完成，再比较过期与最终真实下传质量。
+    # 这不是完整 HERON 偏好奖励模型复现，只是透明的候选筛选规则。
+    mode: heron_hierarchical
+    hierarchy:
+      - {metric: completion_rate, direction: max, absolute_margin: 0.0, relative_margin: 0.0, std_scale: 1.0}
+      - {metric: expiration_rate, direction: min, absolute_margin: 0.0, relative_margin: 0.0, std_scale: 1.0}
+      - {metric: delivered_timeliness_raw, direction: max, absolute_margin: 1.0e-6, relative_margin: 0.0, std_scale: 1.0}
+      - {metric: delivered_data_mbit, direction: max, absolute_margin: 1.0e-3, relative_margin: 0.0, std_scale: 1.0}
+      - {metric: rejected_subaction_rate, direction: min, absolute_margin: 0.0, relative_margin: 0.0, std_scale: 1.0}
+      - {metric: load_balance_mean_per_task, direction: max, absolute_margin: 1.0e-9, relative_margin: 0.0, std_scale: 1.0}
+      - {metric: sgl_action_fraction, direction: max, absolute_margin: 0.0, relative_margin: 0.0, std_scale: 1.0}
+    # 保留旧规则，设置 mode: tolerance_lexicographic 时用于历史消融。
     metrics:
       - {metric: delivered_timeliness_raw_mean, direction: max, tolerance: 1.0e-6}
       - {metric: completion_rate_mean, direction: max, tolerance: 1.0e-6}
@@ -95,11 +107,51 @@ baselines:
       - {metric: load_balance_mean_per_task_mean, direction: max, tolerance: 1.0e-9}
       - {metric: rejected_subaction_rate_mean, direction: min, tolerance: 1.0e-9}
 
+  artifact_management:
+    # 训练中保留完整日志以支持恢复；完成后统一压缩为曲线、摘要和两个Checkpoint。
+    save_episode_checkpoints: true
+    write_learning_curves: true
+    compact_completed_runs: true
+
   candidate_eligibility:
     require_full_episode: true
     require_data_conservation: true
     minimum_accepted_sgl_mean: 1.0
-    maximum_single_component_dominance: 0.90
+    maximum_llm_contribution_ratio: 0.60
+    maximum_single_component_dominance: 0.70
+
+  # 候选只使用训练末期窗口，避免某个偶然峰值决定奖励函数排名。
+  candidate_selection:
+    tail_episodes: 3
+
+  # core-preserving LLM reward shaping：固定三项基础目标，LLM对八项特征做附加塑形。
+  reward_composition:
+    mode: base_plus_llm
+    alpha: 0.20
+    base:
+      source: manual_reward
+      features: [sgl_progress, completion_score, expiration_loss]
+    feature_scales:
+      sgl_progress: 1.0
+      relay_progress: 1.0
+      completion_score: 1.0
+      balance_score: 1.0
+      expiration_loss: 1.0
+      invalid_action_rate: 1.0
+      coordination_conflict_rate: 1.0
+      relay_cost: 1.0
+
+  # 固定分阶段追加训练：每个阶段均使用HERON层级排序，不使用在线分配。
+  staged_search:
+    enabled: true
+    initial_episodes: 2
+    keep_after_stage_1: 4
+    extra_episodes_stage_2: 1
+    keep_after_stage_2: 2
+    extra_episodes_stage_3: 1
+    keep_after_stage_3: 1
+    confirmation_episodes: 1
+    max_episodes_per_candidate: 5
 
   output:
     root: results/baselines

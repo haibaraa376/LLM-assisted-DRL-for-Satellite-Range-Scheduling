@@ -26,6 +26,7 @@ from baselines.methods import (
 from baselines.orchestrator import BaselineOrchestrator
 from baselines.reward_spec_registry import register_reward_spec
 from mappo.manual_reward import ManualReward
+from mappo.training_runner import BaselineTrainingRunner
 
 
 class _InteractiveInput(io.StringIO):
@@ -97,6 +98,76 @@ def _write_fake_summary(output_directory, episodes):
         encoding="utf-8",
     )
     (output / "last_checkpoint.pt").write_bytes(b"mock checkpoint")
+
+
+def test_completed_method_artifacts_are_compact_but_keep_curve_and_checkpoints(tmp_path):
+    point = {
+        "episode_index": 0,
+        "episode_seed": 2025,
+        "environment_steps": 64,
+        "update_count": 1,
+        "mean_step_reward": 0.2,
+        "completion_rate_mean": 0.5,
+        "completion_rate_std": 0.1,
+        "expiration_rate_mean": 0.2,
+        "expiration_rate_std": 0.1,
+        "delivered_timeliness_raw_mean": 4.0,
+        "delivered_timeliness_raw_std": 0.2,
+        "delivered_data_mbit_mean": 10.0,
+        "delivered_data_mbit_std": 1.0,
+        "rejected_subaction_rate_mean": 0.1,
+        "rejected_subaction_rate_std": 0.01,
+        "load_balance_mean_per_task_mean": 0.8,
+        "load_balance_mean_per_task_std": 0.02,
+        "sgl_action_fraction_mean": 0.4,
+        "sgl_action_fraction_std": 0.03,
+        "accepted_isl_count": 2,
+        "accepted_idl_count": 1,
+        "accepted_sgl_count": 3,
+        "full_episode": True,
+        "data_conservation_passed": True,
+        "validation": {"selected_task_ids": ["task_should_not_survive"]},
+    }
+    (tmp_path / "learning_curve.json").write_text(
+        json.dumps([point]), encoding="utf-8"
+    )
+    (tmp_path / "summary.json").write_text(
+        json.dumps({
+            "method": "manual_mappo",
+            "target_episode_count": 1,
+            "best_validation_result": {"completion_rate_mean": 0.5},
+            "best_validation_scenarios": [{"selected_task_ids": ["task"]}],
+        }),
+        encoding="utf-8",
+    )
+    for name in (
+        "learning_curve.png", "episodes.jsonl", "train_updates.jsonl",
+        "validation.jsonl", "best_checkpoint.pt", "last_checkpoint.pt",
+    ):
+        (tmp_path / name).write_bytes(b"test")
+    (tmp_path / "checkpoints").mkdir()
+
+    BaselineTrainingRunner.compact_completed_artifacts(tmp_path)
+
+    assert (tmp_path / "learning_curve.png").is_file()
+    assert (tmp_path / "learning_curve.csv").is_file()
+    assert (tmp_path / "best_checkpoint.pt").is_file()
+    assert (tmp_path / "last_checkpoint.pt").is_file()
+    assert not (tmp_path / "learning_curve.json").exists()
+    assert not (tmp_path / "episodes.jsonl").exists()
+    assert not (tmp_path / "train_updates.jsonl").exists()
+    assert not (tmp_path / "validation.jsonl").exists()
+    assert not (tmp_path / "checkpoints").exists()
+    assert "selected_task_ids" not in (tmp_path / "learning_curve.csv").read_text(
+        encoding="utf-8"
+    )
+    compact_summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert "best_validation_scenarios" not in compact_summary
+    restored = BaselineTrainingRunner._points_from_compact_curve(
+        tmp_path / "learning_curve.csv"
+    )
+    assert restored[0]["episode_index"] == 0
+    assert restored[0]["completion_rate_mean"] == pytest.approx(0.5)
 
 
 def test_log_schema_has_explicit_training_reward_and_rejects_invalid_values():
@@ -454,7 +525,6 @@ def test_orchestrator_rejects_changed_reward_spec_on_resume(tmp_path):
 def test_cli_has_no_silent_api_confirmation_bypass():
     scripts = (
         "train_baselines.py",
-        "generate_llm_reward_candidates.py",
         "run_llm_ppo_search.py",
     )
     for name in scripts:
