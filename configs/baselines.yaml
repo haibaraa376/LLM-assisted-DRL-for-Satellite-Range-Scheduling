@@ -60,8 +60,10 @@ baselines:
       cache:
         enabled: true
         directory: results/baselines/llm_search/api_calls
-      reward_mode: direct_llm_l1
-      reward_schema_version: "2.0"
+      # 有效LLM权重的L1总和与人工奖励一致，保证两种正式方法奖励尺度可比。
+      l1_target_scale: 2.32
+      reward_mode: direct_llm_l1_manual_scale
+      reward_schema_version: "2.1"
       conflict_fixed_zero: true
 
   # 三种方法共享训练预算、任务划分和验证场景；test本阶段禁止使用。

@@ -143,12 +143,25 @@ def validate_baseline_config(config, mappo_config=None):
         _finite_number(search[name], "search.{0}".format(name), positive=True)
     if search["evaluation_protocol"] != "reward_search":
         raise ValueError("LLM候选搜索必须使用reward_search协议")
-    if llm.get("reward_mode") != "direct_llm_l1":
-        raise ValueError("LLM奖励必须使用direct_llm_l1模式")
-    if llm.get("reward_schema_version") != "2.0":
-        raise ValueError("LLM奖励Schema版本必须为2.0")
+    if llm.get("reward_mode") != "direct_llm_l1_manual_scale":
+        raise ValueError("LLM奖励必须使用direct_llm_l1_manual_scale模式")
+    if llm.get("reward_schema_version") != "2.1":
+        raise ValueError("LLM奖励Schema版本必须为2.1")
     if llm.get("conflict_fixed_zero") is not True:
         raise ValueError("LLM协调冲突权重必须永久固定为0")
+    _finite_number(llm["l1_target_scale"], "LLM目标L1尺度", positive=True)
+    if mappo_config is not None:
+        manual_l1 = sum(
+            abs(float(value))
+            for value in mappo_config["manual_reward"]["weights"].values()
+        )
+        if not math.isclose(
+            float(llm["l1_target_scale"]),
+            manual_l1,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            raise ValueError("LLM目标L1尺度必须与Manual奖励L1尺度一致")
     selection = config["candidate_selection"]
     _finite_number(selection["tail_episodes"], "候选尾部Episode数", positive=True)
     if int(selection["tail_episodes"]) != 2:

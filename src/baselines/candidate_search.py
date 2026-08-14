@@ -91,6 +91,10 @@ class CachedRewardGenerator:
                 "reward_mode": self.llm_config["reward_mode"],
                 "reward_schema_version": self.llm_config["reward_schema_version"],
                 "conflict_fixed_zero": self.llm_config["conflict_fixed_zero"],
+                "l1_target_scale": self.llm_config["l1_target_scale"],
+                "round_index": metadata.get("round_index"),
+                "candidate_index": metadata.get("candidate_index"),
+                "candidate_id": metadata.get("candidate_id"),
             },
         )
         root = Path(self.llm_config["cache"]["directory"]) / key
@@ -123,15 +127,15 @@ class CachedRewardGenerator:
         raise RuntimeError("LLM候选生成在有限重试后失败") from last_error
 
 
-def diagnose_reward_spec(spec, numerical, manual_weights=None):
+def diagnose_reward_spec(spec, numerical, target_l1, manual_weights=None):
     """仅检查实际直接LLM公式的合法性、有限性和数值边界。"""
     del manual_weights
-    weights = reward_spec_weights(spec)
+    weights = reward_spec_weights(spec, target_l1=target_l1)
     checks = {
         "conflict_fixed_zero": weights["coordination_conflict"] == 0.0,
         "weights_finite": all(math.isfinite(value) and value >= 0.0 for value in weights.values()),
         "seven_weights_nonzero": sum(abs(value) for name, value in weights.items() if name != "coordination_conflict") > 0.0,
-        "l1_unit": math.isclose(sum(abs(value) for value in weights.values()), 1.0, rel_tol=0.0, abs_tol=1e-12),
+        "l1_matches_target": math.isclose(sum(abs(value) for value in weights.values()), float(target_l1), rel_tol=0.0, abs_tol=1e-12),
     }
     samples = {}
     for name, features in {
@@ -202,7 +206,11 @@ def train_and_rank_candidates(candidates, baseline_config, mappo_config, output_
     target = int(search["candidate_training_episodes"])
     results, initial_actor, initial_critic = [], None, None
     for candidate_id, spec in candidates:
-        diagnosis = diagnose_reward_spec(spec, mappo_config["manual_reward"]["numerical"])
+        diagnosis = diagnose_reward_spec(
+            spec,
+            mappo_config["manual_reward"]["numerical"],
+            baseline_config["methods"]["llm_ppo"]["l1_target_scale"],
+        )
         if diagnosis["status"] != "accepted_for_training":
             raise ValueError("候选{0}未通过直接奖励诊断".format(candidate_id))
         directory = Path(output_root) / "cands" / candidate_id

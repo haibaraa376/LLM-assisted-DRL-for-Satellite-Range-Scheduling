@@ -61,7 +61,6 @@ def validate_mappo_config(config):
     if config["smoke_training"]["update_count"] <= 0:
         raise ValueError("冒烟训练更新次数必须为正数")
     _validate_manual_reward_config(config["manual_reward"])
-    _validate_manual_training_config(config["manual_training"])
 
 
 def _validate_manual_reward_config(config):
@@ -99,35 +98,6 @@ def _validate_manual_reward_config(config):
         raise ValueError("无效动作和协调冲突代码集合不能为空")
     if invalid & coordination:
         raise ValueError("无效动作与协调冲突代码集合不能重叠")
-
-
-def _validate_manual_training_config(config):
-    """验证train/validation隔离、任务规模、Episode和Checkpoint路径。"""
-    if config["split"] != "train":
-        raise ValueError("人工MAPPO训练只能使用train划分")
-    validation = config["validation"]
-    if validation["split"] != "validation":
-        raise ValueError("模型选择只能使用validation划分，禁止使用test")
-    if "test" in (config["split"], validation["split"]):
-        raise ValueError("第三天训练和验证不得访问test划分")
-    if not 0 < config["task_count"] <= 700:
-        raise ValueError("train任务数必须位于1到700")
-    if not 0 < validation["task_count"] <= 150:
-        raise ValueError("validation任务数必须位于1到150")
-    if config["episode_count"] <= 0:
-        raise ValueError("正式训练Episode数量必须为正数")
-    if config["rollout_steps_per_update"] <= 0:
-        raise ValueError("正式训练Rollout步数必须为正数")
-    seeds = validation["seeds"]
-    if not seeds or len(seeds) != len(set(seeds)):
-        raise ValueError("validation seeds必须非空且互不重复")
-    if any(not isinstance(seed, int) or isinstance(seed, bool) or seed < 0 for seed in seeds):
-        raise ValueError("validation seed必须是非负整数")
-    checkpoint = config["checkpoint"]
-    if Path(checkpoint["best_path"]) == Path(checkpoint["last_path"]):
-        raise ValueError("best和last Checkpoint路径必须不同")
-    if checkpoint["save_at_episode_boundary_only"] is not True:
-        raise ValueError("正式Checkpoint只能在Episode边界保存")
 
 
 def validate_runtime_compatibility(config, environment):

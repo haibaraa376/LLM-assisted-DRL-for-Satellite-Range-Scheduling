@@ -20,6 +20,7 @@ from mappo.model_selection import (
 from mappo.training_runner import BaselineTrainingRunner
 from srs_env.models import TaskDefinition, TaskState, TaskStatus
 from srs_env.tasks import load_task_splits
+from srs_env.tasks import load_task_database, sample_episode_tasks
 
 
 def _metrics(**overrides):
@@ -138,10 +139,35 @@ def test_llm_weights_match_manual_l1_without_mutating_raw_spec():
         spec,
         mappo["manual_reward"]["weights"],
     )
-    assert sum(abs(value) for value in effective.values()) == pytest.approx(1.0)
+    assert sum(abs(value) for value in effective.values()) == pytest.approx(2.32)
     assert effective["coordination_conflict"] == 0.0
-    assert metadata["normalization_mode"] == "l1_unit_direct_llm_7d"
+    assert metadata["target_weight_l1"] == pytest.approx(2.32)
+    assert metadata["normalization_mode"] == "l1_manual_scale_direct_llm_7d"
     assert spec.to_dict() == original
+
+
+def test_manual_and_llm_use_the_same_fixed_training_task_ids():
+    """两种正式方法共用Runner的training_seed和train池，因此任务完全相同。"""
+    config = load_baseline_config()
+    database, splits = load_task_database(), load_task_splits()
+    manual_ids = [
+        task.task_id for task in sample_episode_tasks(
+            database,
+            splits["train"],
+            config["training"]["task_count"],
+            config["training"]["training_seed"],
+        )
+    ]
+    llm_ids = [
+        task.task_id for task in sample_episode_tasks(
+            database,
+            splits["train"],
+            config["training"]["task_count"],
+            config["training"]["training_seed"],
+        )
+    ]
+    assert len(manual_ids) == 150
+    assert manual_ids == llm_ids
 
 
 def test_reward_dominance_uses_only_eight_weighted_components():

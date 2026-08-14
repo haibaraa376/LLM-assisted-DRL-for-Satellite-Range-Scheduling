@@ -49,7 +49,9 @@ class BaselineTrainingRunner:
         self.trainer = trainer
         self.evaluator = evaluator
         self.config = config
-        self.training = training_config or config["manual_training"]
+        if training_config is None:
+            raise ValueError("正式训练必须显式传入统一训练配置")
+        self.training = training_config
         self.encoder = encoder
         self.method_name = method_name
 
@@ -102,12 +104,9 @@ class BaselineTrainingRunner:
             )
             protocol_metadata = public_protocol_metadata(selection_protocol)
 
-        training_seed = self.training.get("training_seed")
-        if training_seed is None:
-            training_seed = self.training["base_episode_seed"]
+        training_seed = self.training["training_seed"]
         for episode_index in range(start_episode_index, target):
-            # 正式基线使用training_seed；旧manual_training配置沿用其同义字段，
-            # 二者均固定为同一训练场景，不随Episode递增。
+            # 所有正式基线均固定使用同一训练场景，不随Episode递增。
             episode_seed = training_seed
             reset_info = self.trainer.reset_episode(
                 episode_seed,

@@ -290,7 +290,7 @@ def test_18_valid_schema_parses(valid_spec):
     [
         (lambda data: data.pop("rationale"), "字段"),
         (lambda data: data.update({"unknown": 1}), "字段"),
-        (lambda data: data.update({"schema_version": "1.0"}), "2.0"),
+        (lambda data: data.update({"schema_version": "2.0"}), "2.1"),
         (lambda data: data["positive_weights"].update({"sgl_progress": 4.0}), "越界"),
         (lambda data: data["positive_weights"].update({"sgl_progress": float("nan")}), "有限"),
         (lambda data: data.update({"rationale": "```python"}), "代码"),
@@ -334,6 +334,7 @@ def test_36_candidate_diagnostics_accept(valid_spec, configs):
     result = diagnose_reward_spec(
         valid_spec,
         configs[1]["manual_reward"]["numerical"],
+        configs[0]["methods"]["llm_ppo"]["l1_target_scale"],
     )
     assert result["status"] == "accepted_for_training"
 
@@ -344,6 +345,7 @@ def test_37_candidate_diagnostics_accepts_fixed_zero_conflict(configs):
     result = diagnose_reward_spec(
         LlmRewardSpec.from_dict(data),
         configs[1]["manual_reward"]["numerical"],
+        configs[0]["methods"]["llm_ppo"]["l1_target_scale"],
     )
     assert result["status"] == "accepted_for_training"
 
@@ -392,6 +394,62 @@ def test_42_prompt_change_changes_cache_key():
     assert first != second
 
 
+def test_42a_candidate_identity_prevents_round_cache_sharing(tmp_path, configs):
+    """同一父候选下，2轮×3候选仍必须产生六次独立Mock生成。"""
+    generator, provider, _ = _generator(
+        tmp_path,
+        [_spec_dict() for _ in range(6)],
+        configs,
+        max_calls=6,
+    )
+    llm = configs[0]["methods"]["llm_ppo"]
+    prompts, audits = [], []
+    for round_index in (1, 2):
+        for candidate_index in range(1, 4):
+            candidate_id = "round_{0:02d}_candidate_{1:02d}".format(
+                round_index,
+                candidate_index,
+            )
+            args = (
+                configs[0]["training"]["task_count"],
+                llm["l1_target_scale"],
+                round_index,
+                candidate_index,
+                3,
+                candidate_id,
+            )
+            prompt = (
+                build_initial_reward_prompt(*args)
+                if round_index == 1
+                else build_feedback_reward_prompt(
+                    *args,
+                    "round_01_candidate_01",
+                    {"last2_validation": {"completion_rate_mean": 0.5}},
+                )
+            )
+            _, audit = generator.generate(
+                prompt,
+                {
+                    "task_count": 150,
+                    "round_index": round_index,
+                    "candidate_index": candidate_index,
+                    "candidate_id": candidate_id,
+                },
+            )
+            prompts.append(prompt)
+            audits.append(audit)
+    assert len(set(prompts)) == 6
+    assert len({audit["call_id"] for audit in audits}) == 6
+    assert all(audit["cache_hit"] is False for audit in audits)
+    assert provider.call_count == 6
+    _, repeated = generator.generate(
+        prompts[-1],
+        {"task_count": 150, "round_index": 2, "candidate_index": 3, "candidate_id": "round_02_candidate_03"},
+    )
+    assert repeated["cache_hit"] is True
+    assert provider.call_count == 6
+
+
 def test_43_call_budget_stops_generation(tmp_path, configs):
     generator, _, _ = _generator(tmp_path, [_spec_dict()], configs, max_calls=0)
     with pytest.raises(RuntimeError, match="调用预算"):
@@ -424,7 +482,14 @@ def test_46_live_provider_requires_key(configs, monkeypatch):
 
 
 def test_47_prompt_contains_json_and_all_features(configs):
-    prompt = build_initial_reward_prompt(configs[0]["training"]["task_count"])
+    prompt = build_initial_reward_prompt(
+        configs[0]["training"]["task_count"],
+        configs[0]["methods"]["llm_ppo"]["l1_target_scale"],
+        1,
+        1,
+        8,
+        "round_01_candidate_01",
+    )
     assert "JSON" in prompt
     for name in RewardFeatures.__dataclass_fields__:
         assert name in prompt
@@ -433,6 +498,11 @@ def test_47_prompt_contains_json_and_all_features(configs):
 def test_48_feedback_prompt_has_parent_without_sensitive_path(configs):
     prompt = build_feedback_reward_prompt(
         configs[0]["training"]["task_count"],
+        configs[0]["methods"]["llm_ppo"]["l1_target_scale"],
+        2,
+        1,
+        8,
+        "round_02_candidate_01",
         "round_01_candidate_01",
         {"timeliness_raw_mean": 2.0},
     )

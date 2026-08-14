@@ -27,23 +27,30 @@ def raw_reward_spec_weights(reward_spec):
     }
 
 
-def normalized_reward_spec_weights(reward_spec, manual_weights=None):
-    """只对七项可调权重做L1归一化；保留旧参数仅为调用兼容。"""
-    del manual_weights
+def normalized_reward_spec_weights(reward_spec, manual_weights=None, target_l1=None):
+    """按统一的人工奖励L1尺度缩放七项LLM可调权重。"""
+    if target_l1 is None:
+        if manual_weights is None:
+            raise ValueError("LLM权重归一化必须提供目标L1尺度")
+        target_l1 = sum(abs(float(value)) for value in manual_weights.values())
+    target_l1 = float(target_l1)
+    if not math.isfinite(target_l1) or target_l1 <= 0.0:
+        raise ValueError("LLM目标L1尺度必须为正有限数")
     raw = raw_reward_spec_weights(reward_spec)
     l1 = sum(abs(value) for value in raw.values())
     if not math.isfinite(l1) or l1 <= 0.0:
         raise ValueError("七项LLM奖励权重的L1范数必须为正有限数")
-    effective = {name: value / l1 for name, value in raw.items()}
+    effective = {name: value / l1 * target_l1 for name, value in raw.items()}
     if effective["coordination_conflict"] != 0.0:
         raise RuntimeError("冲突权重归一化后必须仍为0")
     digest = hashlib.sha256(
         json.dumps(effective, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     return effective, {
-        "normalization_mode": "l1_unit_direct_llm_7d",
-        "normalization_factor": 1.0 / l1,
+        "normalization_mode": "l1_manual_scale_direct_llm_7d",
+        "normalization_factor": target_l1 / l1,
         "raw_weight_l1": l1,
+        "target_weight_l1": target_l1,
         "effective_weight_l1": sum(abs(value) for value in effective.values()),
         "raw_weights": raw,
         "effective_weights": effective,
@@ -52,9 +59,9 @@ def normalized_reward_spec_weights(reward_spec, manual_weights=None):
     }
 
 
-def reward_spec_weights(reward_spec, manual_weights=None):
-    """返回训练实际生效的单位L1权重。"""
-    return normalized_reward_spec_weights(reward_spec, manual_weights)[0]
+def reward_spec_weights(reward_spec, manual_weights=None, target_l1=None):
+    """返回训练实际生效的、与人工奖励同尺度的权重。"""
+    return normalized_reward_spec_weights(reward_spec, manual_weights, target_l1)[0]
 
 
 @dataclass(frozen=True)
@@ -81,14 +88,16 @@ class LlmWeightReward:
 
     environment_aware = True
 
-    def __init__(self, feature_extractor, reward_spec, composition=None):
+    def __init__(self, feature_extractor, reward_spec, target_l1=None, composition=None):
         if composition not in (None, {}):
             raise ValueError("直接LLM奖励不接受reward_composition")
         self.feature_extractor = feature_extractor
         self.reward_spec = reward_spec
         self.reward_spec_id = reward_spec.spec_id
         self.effective_weights, self.weight_metadata = normalized_reward_spec_weights(
-            reward_spec
+            reward_spec,
+            feature_extractor.config["weights"],
+            target_l1,
         )
         self.weight_metadata["reward_spec_id"] = self.reward_spec_id
         self.warning_count = 0

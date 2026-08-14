@@ -120,6 +120,7 @@ def build_baseline_components(
         reward_model = LlmWeightReward(
             manual,
             reward_spec,
+            baseline_config["methods"]["llm_ppo"]["l1_target_scale"],
         )
         config["reward_spec_id"] = reward_spec.spec_id
         config["llm_reward_weight_metadata"] = deepcopy(

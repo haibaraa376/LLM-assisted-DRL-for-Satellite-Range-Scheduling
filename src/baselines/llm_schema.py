@@ -72,8 +72,8 @@ class LlmRewardSpec:
         """从字典构造并执行全部结构、数值和文本安全检查。"""
         if not isinstance(data, dict) or set(data) != _TOP_LEVEL_FIELDS:
             raise ValueError("LLM奖励JSON字段缺失或包含未知字段")
-        if data["schema_version"] != "2.0":
-            raise ValueError("schema_version必须为2.0")
+        if data["schema_version"] != "2.1":
+            raise ValueError("schema_version必须为2.1")
         if not isinstance(data["reward_name"], str) or not _SAFE_NAME.fullmatch(
             data["reward_name"]
         ):
@@ -173,7 +173,7 @@ class LlmRewardSpec:
 def default_mock_specs():
     """返回两个方向合理且权重不同的Mock候选。"""
     base = {
-        "schema_version": "2.0",
+        "schema_version": "2.1",
         "reward_name": "deadline_delivery_mock_v1",
         "positive_weights": {
             "sgl_progress": 1.20,

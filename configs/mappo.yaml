@@ -132,37 +132,8 @@ mappo:
       - DUPLICATE_TASK_IN_COMPOSITE_ACTION
       - DUPLICATE_TARGET_LINK_IN_COMPOSITE_ACTION
 
-  # 训练只使用train；固定validation仅用于模型选择，test留给最终论文实验。
-  # 默认5个完整Episode是流程验收规模，不代表最终训练预算；CLI可增加总数。
-  manual_training:
-    split: train
-    task_count: 200
-    base_episode_seed: 2025
-    episode_count: 5
-    rollout_steps_per_update: 64
-    validation_interval_episodes: 1
-    checkpoint_interval_episodes: 1
-    validation:
-      split: validation
-      task_count: 100
-      seeds: [3025, 3026, 3027]
-      deterministic: true
-    checkpoint:
-      best_path: results/day3/manual_reward_mappo/best_checkpoint.pt
-      last_path: results/day3/manual_reward_mappo/last_checkpoint.pt
-      save_at_episode_boundary_only: true
-    logging:
-      update_log_path: results/day3/manual_reward_mappo/train_updates.jsonl
-      episode_log_path: results/day3/manual_reward_mappo/episodes.jsonl
-      validation_log_path: results/day3/manual_reward_mappo/validation.jsonl
-      summary_path: results/day3/manual_reward_mappo/summary.json
-    best_model_rule:
-      primary_metric: timeliness_raw_mean
-      secondary_metric: load_balance_mean_per_task_mean
-      primary_tolerance: 1.0e-6
-
   smoke_training:
-    split: validation
+    split: checkpoint_selection
     task_count: 20
     update_count: 2
     deterministic_evaluation_steps: 16
