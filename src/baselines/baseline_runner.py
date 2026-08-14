@@ -120,7 +120,6 @@ def build_baseline_components(
         reward_model = LlmWeightReward(
             manual,
             reward_spec,
-            baseline_config.get("reward_composition"),
         )
         config["reward_spec_id"] = reward_spec.spec_id
         config["llm_reward_weight_metadata"] = deepcopy(

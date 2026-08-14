@@ -47,10 +47,20 @@ def write_task_database(tasks, config, root=Path("data/tasks")):
     ids = np.array([task.task_id for task in tasks])
     rng = np.random.RandomState(config["task_database"]["split_seed"])
     rng.shuffle(ids)
-    ratios = config["task_database"]["split"]
-    first = int(ratios["train"] * len(ids))
-    second = first + int(ratios["validation"] * len(ids))
-    splits = {"train": ids[:first].tolist(), "validation": ids[first:second].tolist(), "test": ids[second:].tolist()}
+    split_sizes = config["task_database"]["split"]
+    required_names = ("train", "reward_search", "checkpoint_selection", "test")
+    if set(split_sizes) != set(required_names):
+        raise ValueError("任务划分必须恰好包含train、reward_search、checkpoint_selection、test")
+    if any(int(split_sizes[name]) != split_sizes[name] or int(split_sizes[name]) <= 0 for name in required_names):
+        raise ValueError("任务划分数量必须为正整数")
+    if sum(int(split_sizes[name]) for name in required_names) != len(ids):
+        raise ValueError("任务划分数量之和必须等于任务数据库大小")
+    splits = {}
+    offset = 0
+    for name in required_names:
+        next_offset = offset + int(split_sizes[name])
+        splits[name] = ids[offset:next_offset].tolist()
+        offset = next_offset
     (root / "task_splits.json").write_text(json.dumps(splits, ensure_ascii=False, indent=2), encoding="utf-8")
     data_sizes = np.asarray([task.data_size_mbit for task in tasks])
     arrivals = np.asarray([task.arrival_time_s for task in tasks])

@@ -70,7 +70,7 @@ def validate_environment_config(config):
 
 
 def validate_task_config(config):
-    """检查任务源域、寿命分段、数据量范围和训练划分比例。"""
+    """检查任务源域、寿命分段、数据量范围和四个互斥任务池。"""
     database = config["task_database"]
     lifetime = database["survival_time_seconds"]
     values = [lifetime["priority_1_to_3"], lifetime["priority_4_to_6"], lifetime["priority_7_to_9"], lifetime["priority_10"]]
@@ -81,9 +81,15 @@ def validate_task_config(config):
     size = database["data_size_mbit"]
     if size["minimum"] <= 0 or size["maximum"] < size["minimum"]:
         raise ValueError("任务数据量范围不合法")
-    if abs(sum(database["split"].values()) - 1.0) > 1e-9:
-        raise ValueError("任务划分比例之和必须为1")
-    train_size = int(database["database_size"] * database["split"]["train"])
+    splits = database["split"]
+    required = {"train", "reward_search", "checkpoint_selection", "test"}
+    if set(splits) != required:
+        raise ValueError("任务划分必须恰好包含四个互斥任务池")
+    if any(not isinstance(value, int) or isinstance(value, bool) or value <= 0 for value in splits.values()):
+        raise ValueError("任务划分数量必须为正整数")
+    if sum(splits.values()) != database["database_size"]:
+        raise ValueError("任务划分数量之和必须等于任务数据库大小")
+    train_size = splits["train"]
     if config["episode"]["task_count"] > train_size:
         raise ValueError("episode任务数不能超过默认train划分数量")
 

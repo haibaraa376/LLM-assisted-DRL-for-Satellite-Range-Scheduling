@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from baselines.candidate_search import assess_candidate_eligibility
 from baselines.baseline_runner import build_training_config
 from baselines.config import load_baseline_config
 from baselines.llm_reward import normalized_reward_spec_weights
@@ -117,11 +116,11 @@ def test_checkpoint_protocol_uses_full_validation_pool_and_stays_off_train_test(
         splits,
     )
     repeated = build_evaluation_protocol("reward_search", config, splits)
-    assert set(search["pool_task_ids"]).issubset(checkpoint["pool_task_ids"])
-    assert set(checkpoint["pool_task_ids"]).isdisjoint(splits["train"])
-    assert set(checkpoint["pool_task_ids"]).isdisjoint(splits["test"])
+    pools = [set(search["pool_task_ids"]), set(checkpoint["pool_task_ids"]), set(build_evaluation_protocol("test", config, splits)["pool_task_ids"])]
+    assert all(pools[left].isdisjoint(pools[right]) for left in range(3) for right in range(left + 1, 3))
+    assert set(splits["train"]).isdisjoint(set().union(*pools))
     assert search["pool_sha256"] == repeated["pool_sha256"]
-    assert search["pool_size"] == 75
+    assert search["pool_size"] == 150
     assert checkpoint["pool_size"] == 150
 
     baseline["training"]["task_count"] = 150
@@ -131,19 +130,6 @@ def test_checkpoint_protocol_uses_full_validation_pool_and_stays_off_train_test(
         == 150
     )
 
-    baseline["training"]["task_count"] = 200
-    training = build_training_config(baseline, tmp_path)
-    expanded_splits = load_task_splits()
-    expanded = build_evaluation_protocol(
-        "checkpoint_selection",
-        training["evaluation_protocols"],
-        expanded_splits,
-    )
-    assert expanded["task_count"] == expanded["pool_size"] == 200
-    assert set(expanded["pool_task_ids"]).isdisjoint(expanded_splits["train"])
-    assert set(expanded["pool_task_ids"]).isdisjoint(expanded_splits["test"])
-
-
 def test_llm_weights_match_manual_l1_without_mutating_raw_spec():
     mappo = load_mappo_config()
     spec = default_mock_specs()[0]
@@ -152,64 +138,10 @@ def test_llm_weights_match_manual_l1_without_mutating_raw_spec():
         spec,
         mappo["manual_reward"]["weights"],
     )
-    manual_l1 = sum(abs(value) for value in mappo["manual_reward"]["weights"].values())
-    assert sum(abs(value) for value in effective.values()) == pytest.approx(manual_l1)
-    assert metadata["normalization_mode"] == "l1_match_manual"
+    assert sum(abs(value) for value in effective.values()) == pytest.approx(1.0)
+    assert effective["coordination_conflict"] == 0.0
+    assert metadata["normalization_mode"] == "l1_unit_direct_llm_7d"
     assert spec.to_dict() == original
-
-
-def test_candidate_eligibility_records_dominant_reward_component_as_warning():
-    config = load_baseline_config()["candidate_eligibility"]
-    summary = {
-        "candidate_id": "candidate_dominant",
-        "episodes_run": 2,
-        "best_validation_scenarios": [{"full_episode": True}],
-        "best_validation_data_conservation": True,
-        "reward_diagnostics": {
-            "maximum_single_component_dominance": 0.91,
-            "llm_contribution_ratio": 0.2,
-            "max_component_share": 0.91,
-        },
-    }
-    validation = {"accepted_sgl_count_mean": 2.0}
-    result = assess_candidate_eligibility(
-        summary,
-        validation,
-        config,
-        selection_window={
-            "eligible": True,
-            "aggregated_diagnostics": summary["reward_diagnostics"],
-            "tail_episode_records": [
-                {"full_episode": True, "data_conservation_passed": True},
-                {"full_episode": True, "data_conservation_passed": True},
-            ],
-        },
-    )
-    assert result["passed"] is True
-    assert result["eligible"] is True
-    assert result["warnings"] == ["max_component_share_above_threshold"]
-
-
-def test_candidate_eligibility_rejects_data_conservation_failure():
-    config = load_baseline_config()["candidate_eligibility"]
-    summary = {
-        "episodes_run": 2,
-        "best_validation_data_conservation": False,
-    }
-    result = assess_candidate_eligibility(
-        summary,
-        {"accepted_sgl_count_mean": 2.0},
-        config,
-        selection_window={
-            "eligible": True,
-            "tail_episode_records": [
-                {"full_episode": True, "data_conservation_passed": False},
-                {"full_episode": True, "data_conservation_passed": False},
-            ],
-        },
-    )
-    assert result["passed"] is False
-    assert "data_conservation_failed" in result["reasons"]
 
 
 def test_reward_dominance_uses_only_eight_weighted_components():

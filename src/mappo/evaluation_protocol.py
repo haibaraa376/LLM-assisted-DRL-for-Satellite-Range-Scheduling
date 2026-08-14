@@ -23,40 +23,17 @@ def build_evaluation_protocol(name, protocol_config, task_splits):
     split_seed = int(protocol_config["split_seed"])
     definition = dict(protocol_config[name])
     task_count = int(definition["task_count"])
-    validation_ids = list(task_splits["validation"])
-    if name == "checkpoint_selection" and task_count > len(validation_ids):
-        required = task_count - len(validation_ids)
-        train_ids = list(task_splits["train"])
-        if required > len(train_ids):
-            raise ValueError("train划分不足以扩展validation任务池")
-        # 仅在正式validation容量不足时，确定性地把部分任务从train划分转入
-        # validation划分；环境随后也只能从更新后的train划分采样，避免泄漏。
-        transferred = sorted(train_ids)[-required:]
-        transferred_set = set(transferred)
-        task_splits["train"] = [
-            task_id for task_id in train_ids if task_id not in transferred_set
-        ]
-        task_splits["validation"] = validation_ids + transferred
-        validation_ids = list(task_splits["validation"])
-    if not validation_ids:
-        raise ValueError("validation划分不能为空")
-    rng = np.random.RandomState(split_seed)
-    shuffled = np.asarray(validation_ids, dtype=object)
-    rng.shuffle(shuffled)
-    midpoint = len(shuffled) // 2
-    pools = {
-        "reward_search": shuffled[:midpoint].tolist(),
-        # 正式模型选择可使用完整validation划分，因此可与训练任务数同步。
-        "checkpoint_selection": shuffled.tolist(),
-        "test": list(task_splits["test"]),
-    }
+    pool_name = name
+    if pool_name not in task_splits:
+        raise ValueError("任务划分缺少评估池：{0}".format(pool_name))
+    pools = {name: list(task_splits[pool_name])}
     pool_ids = pools[name]
     seeds = [int(seed) for seed in definition["seeds"]]
     if task_count <= 0 or task_count > len(pool_ids):
         raise ValueError("协议任务数超过对应任务池")
     if not seeds or len(seeds) != len(set(seeds)):
         raise ValueError("协议seeds必须非空且互不重复")
-    source = "validation" if name != "test" else "test"
+    source = pool_name
     metadata = {
         "protocol_name": name,
         "source_split": source,

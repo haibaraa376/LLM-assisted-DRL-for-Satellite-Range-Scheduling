@@ -290,7 +290,7 @@ def test_18_valid_schema_parses(valid_spec):
     [
         (lambda data: data.pop("rationale"), "字段"),
         (lambda data: data.update({"unknown": 1}), "字段"),
-        (lambda data: data.update({"schema_version": "2.0"}), "1.0"),
+        (lambda data: data.update({"schema_version": "1.0"}), "2.0"),
         (lambda data: data["positive_weights"].update({"sgl_progress": 4.0}), "越界"),
         (lambda data: data["positive_weights"].update({"sgl_progress": float("nan")}), "有限"),
         (lambda data: data.update({"rationale": "```python"}), "代码"),
@@ -319,7 +319,7 @@ def test_29_llm_reward_reuses_features(valid_spec):
 
 @pytest.mark.parametrize(
     "feature_index,sign",
-    [(0, 1), (2, 1), (4, -1), (5, -1), (6, -1), (7, -1)],
+    [(0, 1), (2, 1), (4, -1), (5, -1), (7, -1)],
 )
 def test_30_to_35_llm_reward_directions(valid_spec, feature_index, sign):
     values = [0.0] * 8
@@ -338,14 +338,14 @@ def test_36_candidate_diagnostics_accept(valid_spec, configs):
     assert result["status"] == "accepted_for_training"
 
 
-def test_37_candidate_diagnostics_reject_zero_conflict(configs):
+def test_37_candidate_diagnostics_accepts_fixed_zero_conflict(configs):
     data = _spec_dict()
     data["penalty_weights"]["coordination_conflict_rate"] = 0.0
     result = diagnose_reward_spec(
         LlmRewardSpec.from_dict(data),
         configs[1]["manual_reward"]["numerical"],
     )
-    assert result["status"] == "rejected_before_training"
+    assert result["status"] == "accepted_for_training"
 
 
 def test_38_mock_valid_response(tmp_path, configs):
@@ -424,7 +424,7 @@ def test_46_live_provider_requires_key(configs, monkeypatch):
 
 
 def test_47_prompt_contains_json_and_all_features(configs):
-    prompt = build_initial_reward_prompt(configs[1]["manual_reward"]["weights"])
+    prompt = build_initial_reward_prompt(configs[0]["training"]["task_count"])
     assert "JSON" in prompt
     for name in RewardFeatures.__dataclass_fields__:
         assert name in prompt
@@ -432,9 +432,8 @@ def test_47_prompt_contains_json_and_all_features(configs):
 
 def test_48_feedback_prompt_has_parent_without_sensitive_path(configs):
     prompt = build_feedback_reward_prompt(
-        configs[1]["manual_reward"]["weights"],
+        configs[0]["training"]["task_count"],
         "round_01_candidate_01",
-        {"reward": 1.0},
         {"timeliness_raw_mean": 2.0},
     )
     assert "round_01_candidate_01" in prompt

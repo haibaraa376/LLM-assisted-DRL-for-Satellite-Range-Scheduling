@@ -72,8 +72,8 @@ class LlmRewardSpec:
         """从字典构造并执行全部结构、数值和文本安全检查。"""
         if not isinstance(data, dict) or set(data) != _TOP_LEVEL_FIELDS:
             raise ValueError("LLM奖励JSON字段缺失或包含未知字段")
-        if data["schema_version"] != "1.0":
-            raise ValueError("schema_version必须为1.0")
+        if data["schema_version"] != "2.0":
+            raise ValueError("schema_version必须为2.0")
         if not isinstance(data["reward_name"], str) or not _SAFE_NAME.fullmatch(
             data["reward_name"]
         ):
@@ -90,14 +90,15 @@ class LlmRewardSpec:
             minimum,
             maximum,
         )
-        for required_positive in (
-            ("positive_weights", "sgl_progress"),
-            ("positive_weights", "completion_score"),
-            ("penalty_weights", "expiration_loss"),
-        ):
-            group, name = required_positive
-            if data[group][name] <= 0:
-                raise ValueError("{0}权重必须大于0".format(name))
+        if data["penalty_weights"]["coordination_conflict_rate"] != 0.0:
+            raise ValueError("coordination_conflict_rate必须永久固定为0")
+        adjustable = list(data["positive_weights"].values()) + [
+            value
+            for name, value in data["penalty_weights"].items()
+            if name != "coordination_conflict_rate"
+        ]
+        if sum(float(value) for value in adjustable) <= 0.0:
+            raise ValueError("七项可调权重不能全部为0")
         cls._validate_text(data["rationale"], "rationale", required=True)
         cls._validate_text_list(
             data["expected_behavior"],
@@ -172,7 +173,7 @@ class LlmRewardSpec:
 def default_mock_specs():
     """返回两个方向合理且权重不同的Mock候选。"""
     base = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "reward_name": "deadline_delivery_mock_v1",
         "positive_weights": {
             "sgl_progress": 1.20,
@@ -183,7 +184,7 @@ def default_mock_specs():
         "penalty_weights": {
             "expiration_loss": 0.90,
             "invalid_action_rate": 0.08,
-            "coordination_conflict_rate": 0.05,
+            "coordination_conflict_rate": 0.0,
             "relay_cost": 0.04,
         },
         "rationale": "奖励最终下传与任务完成，抑制过期、冲突和循环中继。",
@@ -194,5 +195,4 @@ def default_mock_specs():
     second = json.loads(json.dumps(base, ensure_ascii=False))
     second["reward_name"] = "deadline_delivery_mock_v2"
     second["positive_weights"]["completion_score"] = 1.0
-    second["penalty_weights"]["coordination_conflict_rate"] = 0.08
     return [LlmRewardSpec.from_dict(base), LlmRewardSpec.from_dict(second)]

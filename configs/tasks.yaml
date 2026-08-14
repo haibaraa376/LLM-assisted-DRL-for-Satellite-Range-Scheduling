@@ -11,5 +11,6 @@ task_database:
   priority: {minimum: 1, maximum: 10, distribution: uniform_integer}
   survival_time_seconds: {priority_1_to_3: 21600, priority_4_to_6: 10800, priority_7_to_9: 3600, priority_10: 1800}
   data_size_mbit: {distribution: log_uniform, minimum: 6000.0, maximum: 60000.0}
-  split: {train: 0.70, validation: 0.15, test: 0.15}
+  # 四个用途独立划分，禁止在奖励搜索、模型选择和最终测试间复用任务。
+  split: {train: 550, reward_search: 150, checkpoint_selection: 150, test: 150}
 episode: {default_split: train, task_count: 200, sample_without_replacement: true}

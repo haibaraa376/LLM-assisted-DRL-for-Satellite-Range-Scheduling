@@ -53,8 +53,6 @@ baselines:
         rounds: 5
         candidates_per_round: 8
         candidate_training_episodes: 5
-        candidate_task_count: 200
-        common_training_seeds: [2025]
         evaluation_protocol: reward_search
         maximum_api_calls: 60
         maximum_total_input_tokens: 1000000
@@ -62,6 +60,9 @@ baselines:
       cache:
         enabled: true
         directory: results/baselines/llm_search/api_calls
+      reward_mode: direct_llm_l1
+      reward_schema_version: "2.0"
+      conflict_fixed_zero: true
 
   # 三种方法共享训练预算、任务划分和验证场景；test本阶段禁止使用。
   training:
@@ -79,14 +80,14 @@ baselines:
   evaluation_protocols:
     split_seed: 2027
     reward_search:
-      task_count: 50
-      seeds: [3025, 3026, 3027]
+      task_count: 150
+      seeds: [3025]
     checkpoint_selection:
       # 任务数运行时自动等于training.task_count，禁止在此重复配置。
-      seeds: [4025, 4026, 4027]
+      seeds: [4025]
     test:
-      task_count: 100
-      seeds: [5025, 5026, 5027, 5028, 5029]
+      task_count: 150
+      seeds: [5025]
 
   best_model_rule:
     # HERON-inspired：先比较任务是否完成，再比较过期与最终真实下传质量。
@@ -110,50 +111,14 @@ baselines:
       - {metric: rejected_subaction_rate_mean, direction: min, tolerance: 1.0e-9}
 
   artifact_management:
-    # 正式训练完成后保留逐Episode checkpoint和全部原始日志，便于诊断与恢复。
-    save_episode_checkpoints: true
+    # 逐Episode指标与日志保留；模型仅保留best/last两个边界Checkpoint。
+    save_episode_checkpoints: false
     write_learning_curves: true
     compact_completed_runs: false
 
-  candidate_eligibility:
-    require_full_episode: true
-    require_data_conservation: true
-    minimum_accepted_sgl_mean: 1.0
-    maximum_llm_contribution_ratio: 0.60
-    maximum_single_component_dominance: 0.70
-
-  # 候选只使用训练末期窗口，避免某个偶然峰值决定奖励函数排名。
+  # 所有候选都完成相同的五个Episode，仅以最后两个Episode的validation排名。
   candidate_selection:
-    tail_episodes: 3
-
-  # core-preserving LLM reward shaping：固定三项基础目标，LLM对八项特征做附加塑形。
-  reward_composition:
-    mode: base_plus_llm
-    alpha: 0.20
-    base:
-      source: manual_reward
-      features: [sgl_progress, completion_score, expiration_loss]
-    feature_scales:
-      sgl_progress: 1.0
-      relay_progress: 1.0
-      completion_score: 1.0
-      balance_score: 1.0
-      expiration_loss: 1.0
-      invalid_action_rate: 1.0
-      coordination_conflict_rate: 1.0
-      relay_cost: 1.0
-
-  # 固定分阶段追加训练：每个阶段均使用HERON层级排序，不使用在线分配。
-  staged_search:
-    enabled: true
-    initial_episodes: 2
-    keep_after_stage_1: 4
-    extra_episodes_stage_2: 1
-    keep_after_stage_2: 2
-    extra_episodes_stage_3: 1
-    keep_after_stage_3: 1
-    confirmation_episodes: 1
-    max_episodes_per_candidate: 5
+    tail_episodes: 2
 
   output:
     root: results/baselines

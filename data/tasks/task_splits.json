@@ -549,7 +549,9 @@
     "task_000287",
     "task_000215",
     "task_000262",
-    "task_000139",
+    "task_000139"
+  ],
+  "reward_search": [
     "task_000903",
     "task_000644",
     "task_000241",
@@ -701,7 +703,7 @@
     "task_000738",
     "task_000545"
   ],
-  "validation": [
+  "checkpoint_selection": [
     "task_000623",
     "task_000728",
     "task_000220",

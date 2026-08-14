@@ -663,9 +663,18 @@ class BaselineTrainingRunner:
                 if name not in absolute:
                     raise ValueError("奖励贡献日志缺少必要字段：{0}".format(name))
                 totals[name] += float(absolute[name])
-        base_abs_sum = sum(totals[name] for name in base_names)
-        llm_abs_sum = sum(totals[name] for name in llm_names if name in totals)
-        absolute_total = base_abs_sum + llm_abs_sum
+        direct_llm = (
+            bool(episode_records)
+            and all(record.get("method") == "llm_ppo" for record in episode_records)
+            and not has_llm_components
+        )
+        absolute_total = sum(totals.values())
+        base_abs_sum = 0.0 if direct_llm else sum(totals[name] for name in base_names)
+        llm_abs_sum = (
+            absolute_total
+            if direct_llm
+            else sum(totals[name] for name in llm_names if name in totals)
+        )
         dominance = (
             max(totals.values()) / absolute_total
             if absolute_total > 0.0
@@ -684,9 +693,11 @@ class BaselineTrainingRunner:
             "weighted_component_abs_sums": {
                 name: totals[name] for name in base_names
             },
-            "llm_component_abs_sums": {
-                name: totals[name] for name in llm_names if name in totals
-            },
+            "llm_component_abs_sums": (
+                dict(totals)
+                if direct_llm
+                else {name: totals[name] for name in llm_names if name in totals}
+            ),
             "weighted_component_abs_total": absolute_total,
             "base_abs_sum": base_abs_sum,
             "llm_abs_sum": llm_abs_sum,
