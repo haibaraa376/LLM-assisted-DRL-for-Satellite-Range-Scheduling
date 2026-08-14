@@ -493,6 +493,21 @@ def test_47_prompt_contains_json_and_all_features(configs):
     assert "JSON" in prompt
     for name in RewardFeatures.__dataclass_fields__:
         assert name in prompt
+    for text in (
+        "15颗卫星",
+        "4个地面站",
+        "150",
+        "sgl_progress",
+        "relay_progress",
+        "completion_score",
+        "expiration_loss",
+        "relay_cost",
+        "SGL",
+        "ISL/IDL",
+        "coordination_conflict_rate",
+        "2.32",
+    ):
+        assert text in prompt
 
 
 def test_48_feedback_prompt_has_parent_without_sensitive_path(configs):
@@ -507,6 +522,9 @@ def test_48_feedback_prompt_has_parent_without_sensitive_path(configs):
         {"timeliness_raw_mean": 2.0},
     )
     assert "round_01_candidate_01" in prompt
+    assert "15颗卫星" in prompt
+    assert "RewardFeatures的实际语义如下" in prompt
+    assert "ISL/IDL" in prompt
     assert "DEEPSEEK_API_KEY" not in prompt
     assert "D:\\" not in prompt
 
