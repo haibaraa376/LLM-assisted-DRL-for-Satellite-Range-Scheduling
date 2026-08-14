@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from baselines.candidate_search import assess_candidate_eligibility
+from baselines.baseline_runner import build_training_config
 from baselines.config import load_baseline_config
 from baselines.llm_reward import normalized_reward_spec_weights
 from baselines.llm_schema import default_mock_specs
@@ -102,16 +103,45 @@ def test_model_selection_stable_and_rejects_nonfinite():
         compare_validation_results(missing_late_metric, _metrics(), rule)
 
 
-def test_protocol_pools_are_deterministic_disjoint_and_auditable():
-    config = load_baseline_config()["evaluation_protocols"]
+def test_checkpoint_protocol_uses_full_validation_pool_and_stays_off_train_test(
+    tmp_path,
+):
+    baseline = load_baseline_config()
+    config = baseline["evaluation_protocols"]
     splits = load_task_splits()
     search = build_evaluation_protocol("reward_search", config, splits)
-    checkpoint = build_evaluation_protocol("checkpoint_selection", config, splits)
+    training = build_training_config(baseline, tmp_path)
+    checkpoint = build_evaluation_protocol(
+        "checkpoint_selection",
+        training["evaluation_protocols"],
+        splits,
+    )
     repeated = build_evaluation_protocol("reward_search", config, splits)
-    assert set(search["pool_task_ids"]).isdisjoint(checkpoint["pool_task_ids"])
+    assert set(search["pool_task_ids"]).issubset(checkpoint["pool_task_ids"])
+    assert set(checkpoint["pool_task_ids"]).isdisjoint(splits["train"])
+    assert set(checkpoint["pool_task_ids"]).isdisjoint(splits["test"])
     assert search["pool_sha256"] == repeated["pool_sha256"]
-    assert search["pool_size"] == checkpoint["pool_size"] == 75
-    assert search["task_count"] == checkpoint["task_count"] == 50
+    assert search["pool_size"] == 75
+    assert checkpoint["pool_size"] == 150
+
+    baseline["training"]["task_count"] = 150
+    training = build_training_config(baseline, tmp_path)
+    assert (
+        training["evaluation_protocols"]["checkpoint_selection"]["task_count"]
+        == 150
+    )
+
+    baseline["training"]["task_count"] = 200
+    training = build_training_config(baseline, tmp_path)
+    expanded_splits = load_task_splits()
+    expanded = build_evaluation_protocol(
+        "checkpoint_selection",
+        training["evaluation_protocols"],
+        expanded_splits,
+    )
+    assert expanded["task_count"] == expanded["pool_size"] == 200
+    assert set(expanded["pool_task_ids"]).isdisjoint(expanded_splits["train"])
+    assert set(expanded["pool_task_ids"]).isdisjoint(expanded_splits["test"])
 
 
 def test_llm_weights_match_manual_l1_without_mutating_raw_spec():

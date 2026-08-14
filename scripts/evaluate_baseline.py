@@ -93,7 +93,7 @@ def evaluate_one(
         raise ValueError("Checkpoint的LLM有效权重元数据不一致")
     protocol = build_evaluation_protocol(
         protocol_name,
-        baseline_config["evaluation_protocols"],
+        config["baseline_evaluation_protocols"],
         trainer.environment.task_splits,
     )
     return evaluator.evaluate(

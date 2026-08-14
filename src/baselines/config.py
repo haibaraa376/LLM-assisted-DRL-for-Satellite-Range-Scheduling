@@ -43,15 +43,29 @@ def validate_baseline_config(config, mappo_config=None):
         raise ValueError("基线训练不得使用test划分")
     for name in ("task_count", "episode_count", "rollout_steps"):
         _finite_number(training[name], "training.{0}".format(name), positive=True)
+    _finite_number(
+        training["training_seed"],
+        "training.training_seed",
+        nonnegative=True,
+    )
     protocols = config["evaluation_protocols"]
     _finite_number(protocols["split_seed"], "协议划分seed", nonnegative=True)
-    for protocol_name in ("reward_search", "checkpoint_selection", "test"):
+    # checkpoint_selection的任务数由training.task_count在运行时推导，
+    # 不在YAML中重复保存，避免二者改动后发生冲突。
+    if "task_count" in protocols["checkpoint_selection"]:
+        raise ValueError(
+            "checkpoint_selection.task_count由training.task_count自动推导，"
+            "不得重复配置"
+        )
+    for protocol_name in ("reward_search", "test"):
         protocol = protocols[protocol_name]
         _finite_number(
             protocol["task_count"],
             "协议任务数.{0}".format(protocol_name),
             positive=True,
         )
+    for protocol_name in ("reward_search", "checkpoint_selection", "test"):
+        protocol = protocols[protocol_name]
         seeds = protocol["seeds"]
         if not seeds or len(seeds) != len(set(seeds)):
             raise ValueError("协议seeds必须非空且互不重复")

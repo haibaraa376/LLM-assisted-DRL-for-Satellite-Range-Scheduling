@@ -25,6 +25,15 @@ from .lyapunov_reward import PpoLyaReward
 from .methods import BaselineMethod
 
 
+def _resolved_evaluation_protocols(baseline_config):
+    """让正式checkpoint验证任务数始终与训练任务数一致。"""
+    protocols = deepcopy(baseline_config["evaluation_protocols"])
+    protocols["checkpoint_selection"]["task_count"] = int(
+        baseline_config["training"]["task_count"]
+    )
+    return protocols
+
+
 def build_training_config(baseline_config, output_dir):
     """把公平的基线配置映射到通用Runner格式。"""
     training = baseline_config["training"]
@@ -32,7 +41,7 @@ def build_training_config(baseline_config, output_dir):
     return {
         "split": "train",
         "task_count": int(training["task_count"]),
-        "base_episode_seed": int(baseline_config["seed"]),
+        "training_seed": int(training["training_seed"]),
         "episode_count": int(training["episode_count"]),
         "rollout_steps_per_update": int(training["rollout_steps"]),
         "validation_interval_episodes": int(
@@ -40,8 +49,8 @@ def build_training_config(baseline_config, output_dir):
         ),
         "checkpoint_interval_episodes": 1,
         "validation": deepcopy(training["validation"]),
-        "evaluation_protocols": deepcopy(
-            baseline_config["evaluation_protocols"]
+        "evaluation_protocols": _resolved_evaluation_protocols(
+            baseline_config
         ),
         "checkpoint": {
             "best_path": str(root / "best_checkpoint.pt"),
@@ -77,8 +86,8 @@ def build_baseline_components(
     config["seed"] = int(baseline_config["seed"])
     config["device"] = baseline_config["device"]
     config["baseline_method"] = method.value
-    config["baseline_evaluation_protocols"] = deepcopy(
-        baseline_config["evaluation_protocols"]
+    config["baseline_evaluation_protocols"] = _resolved_evaluation_protocols(
+        baseline_config
     )
     set_global_seed(config["seed"])
     environment = CrossDomainSatelliteRangeSchedulingEnv(

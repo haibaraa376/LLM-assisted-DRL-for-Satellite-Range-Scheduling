@@ -96,17 +96,12 @@ class MappoTrainer:
             raise ValueError("Episode观测必须完整包含15颗卫星")
         self.observations = observations
 
-    def reset_episode(self, seed, split=None, task_count=None, task_ids=None):
-        """按划分或指定任务显式开始新Episode并重置奖励快照。
-
-        ``task_ids`` 仅供固定任务诊断使用；未提供时保持原有按
-        ``split + task_count`` 采样的训练行为。
-        """
+    def reset_episode(self, seed, split, task_count):
+        """按指定划分显式开始新Episode并重置奖励快照。"""
         observations, reset_info = self.environment.reset(
             seed=seed,
             split=split,
             task_count=task_count,
-            task_ids=task_ids,
         )
         self.set_observations(observations)
         self._reset_reward_model()

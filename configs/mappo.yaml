@@ -83,7 +83,6 @@ mappo:
     timeliness_scale: 10.0
     shared_global_reward: true
 
-  # 以下人工奖励权重不是论文公开参数，而是本复现的人工MAPPO基线设置。
   manual_reward:
     enabled: true
     shared_global_reward: true
@@ -94,7 +93,7 @@ mappo:
       balance: 0.05
       expiration: 0.50
       invalid_action: 0.10
-      coordination_conflict: 0.03
+      coordination_conflict: 0.00
       relay_cost: 0.02
     normalization:
       max_priority: 10.0

@@ -102,38 +102,18 @@ class BaselineTrainingRunner:
             )
             protocol_metadata = public_protocol_metadata(selection_protocol)
 
-        # 固定任务诊断只在这里采样一次训练任务；后续Episode显式传入相同
-        # task_ids，正常训练未设置 fixed_task_seed 时仍按Episode换任务。
-        fixed_task_seed = self.training.get("fixed_task_seed")
-        fixed_task_ids = None
-        if fixed_task_seed is not None:
-            fixed_task_seed = int(fixed_task_seed)
-            _, fixed_reset_info = self.trainer.environment.reset(
-                seed=fixed_task_seed,
-                split="train",
-                task_count=self.training["task_count"],
-            )
-            fixed_task_ids = tuple(fixed_reset_info["selected_task_ids"])
-            if len(fixed_task_ids) != int(self.training["task_count"]):
-                raise RuntimeError("固定训练任务数量与task_count不一致")
-        store_validation_details = bool(
-            self.training.get("store_validation_details", True)
-        )
-
+        training_seed = self.training.get("training_seed")
+        if training_seed is None:
+            training_seed = self.training["base_episode_seed"]
         for episode_index in range(start_episode_index, target):
-            if fixed_task_ids is None:
-                episode_seed = self.training["base_episode_seed"] + episode_index
-                reset_info = self.trainer.reset_episode(
-                    episode_seed,
-                    "train",
-                    self.training["task_count"],
-                )
-            else:
-                episode_seed = fixed_task_seed
-                reset_info = self.trainer.reset_episode(
-                    episode_seed,
-                    task_ids=fixed_task_ids,
-                )
+            # 正式基线使用training_seed；旧manual_training配置沿用其同义字段，
+            # 二者均固定为同一训练场景，不随Episode递增。
+            episode_seed = training_seed
+            reset_info = self.trainer.reset_episode(
+                episode_seed,
+                "train",
+                self.training["task_count"],
+            )
             episode_steps = 0
             episode_updates = 0
             episode_reward_sum = 0.0
@@ -351,9 +331,7 @@ class BaselineTrainingRunner:
                 if is_new_best:
                     best_validation_result = candidate
                     best_episode_index = episode_index
-                    best_validation_details = (
-                        validation_result if store_validation_details else None
-                    )
+                    best_validation_details = validation_result
 
             training_state = {
                 "episode_index": episode_index,
@@ -369,33 +347,20 @@ class BaselineTrainingRunner:
                 "reward_spec_id": self.config.get("reward_spec_id"),
             }
             rng_state = capture_rng_state(self.trainer.rng)
-            checkpoint_validation = validation_result
-            if validation_result is not None and not store_validation_details:
-                # 诊断实验仍基于完整固定validation选best，但Checkpoint不保存
-                # 场景级任务ID，只保留选择所需的聚合结果和协议摘要。
-                checkpoint_validation = {
-                    "aggregate": validation_result["aggregate"],
-                    "all_scenarios_data_conservation_passed": (
-                        validation_result[
-                            "all_scenarios_data_conservation_passed"
-                        ]
-                    ),
-                    "protocol": validation_result.get("protocol"),
-                }
             if is_new_best:
                 self._save_boundary_checkpoint(
                     self.training["checkpoint"]["best_path"],
                     update_index,
                     training_state,
                     rng_state,
-                    checkpoint_validation,
+                    validation_result,
                 )
             self._save_boundary_checkpoint(
                 self.training["checkpoint"]["last_path"],
                 update_index,
                 training_state,
                 rng_state,
-                checkpoint_validation,
+                validation_result,
             )
             stage_path = None
             # 只有完整 Episode、守恒检查和当次日志完成后才保存正式阶段状态。
@@ -413,7 +378,7 @@ class BaselineTrainingRunner:
                     update_index,
                     training_state,
                     rng_state,
-                    checkpoint_validation,
+                    validation_result,
                 )
             episode_record["checkpoint_path"] = str(stage_path) if stage_path else None
             episode_record["official_experiment"] = max_steps_per_episode is None

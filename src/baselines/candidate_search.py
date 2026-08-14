@@ -572,7 +572,7 @@ def train_and_rank_candidates(
             search["candidate_training_episodes"]
         )
         runner.training["task_count"] = int(search["candidate_task_count"])
-        runner.training["base_episode_seed"] = int(
+        runner.training["training_seed"] = int(
             search["common_training_seeds"][0]
         )
         runner.training["validation"]["protocol"] = search[
