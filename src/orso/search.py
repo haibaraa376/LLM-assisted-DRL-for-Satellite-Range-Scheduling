@@ -1,7 +1,7 @@
 """复用既有LLM-PPO与MAPPO组件，实现ORSO的固定候选集和D3RB调度。"""
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import math
 from pathlib import Path
@@ -36,6 +36,7 @@ _SMOKE_OVERRIDES = {
         "total_candidate_episode_budget": 5,
         "max_episodes_per_candidate": 3,
     },
+    "final_selection": {"tail_episodes": 1},
 }
 
 
@@ -54,6 +55,7 @@ class _OrsoLearner:
     best_validation_result: object = None
     best_episode_index: object = None
     best_validation_details: object = None
+    validation_history: list = field(default_factory=list)
 
 
 def apply_smoke_overrides(config):
@@ -61,7 +63,7 @@ def apply_smoke_overrides(config):
     smoke = deepcopy(config)
     for section, values in _SMOKE_OVERRIDES.items():
         smoke[section].update(values)
-    validate_orso_config(smoke)
+    validate_orso_config(smoke, allow_smoke_override=True)
     return smoke
 
 
@@ -123,6 +125,63 @@ def _is_better_validation(current, previous):
         if not math.isclose(current_value, previous_value, rel_tol=0.0, abs_tol=1.0e-12):
             return current_value > previous_value
     return False
+
+
+def _tail_validation(candidate_id, history, tail_episodes):
+    """聚合候选自身尾部验证，避免单个末尾Episode偶然波动决定最终winner。"""
+    tail = int(tail_episodes)
+    if len(history) < tail:
+        raise ValueError(
+            "候选{0}只有{1}次validation，少于最终选择所需的{2}次".format(
+                candidate_id,
+                len(history),
+                tail,
+            )
+        )
+    window = history[-tail:]
+    metrics = (
+        "completion_rate_mean",
+        "delivered_data_mbit_mean",
+        "load_balance_mean_per_task_mean",
+    )
+    aggregate = {}
+    for metric in metrics:
+        values = []
+        for validation in window:
+            if metric not in validation or not math.isfinite(float(validation[metric])):
+                raise ValueError(
+                    "候选{0}尾部validation缺少有限字段：{1}".format(
+                        candidate_id,
+                        metric,
+                    )
+                )
+            values.append(float(validation[metric]))
+        aggregate[metric] = sum(values) / len(values)
+    return {
+        "final_selection_window": {
+            "start_episode": len(history) - tail + 1,
+            "end_episode": len(history),
+            "size": tail,
+        },
+        "tail3_validation": aggregate,
+    }
+
+
+def _rank_tail_validations(candidate_histories, tail_episodes):
+    """按尾部均值执行既有 Completion > Data > Balance 词典序排名。"""
+    selection = {
+        candidate_id: _tail_validation(candidate_id, history, tail_episodes)
+        for candidate_id, history in candidate_histories.items()
+    }
+    ranking_input = [
+        {
+            "candidate_id": candidate_id,
+            "validation": payload["tail3_validation"],
+        }
+        for candidate_id, payload in selection.items()
+    ]
+    ranked = rank_direct_candidates(ranking_input)
+    return ranked, selection
 
 
 def _build_learners(candidates, baseline_config, mappo_config, output):
@@ -220,6 +279,7 @@ def _train_one_episode(learner, selector, config, smoke):
     learner.best_episode_index = summary["best_episode_index"]
     learner.best_validation_details = summary["best_validation_details"]
     validation = _latest_validation(learner.candidate_id, summary)
+    learner.validation_history.append(dict(validation))
     reward = _task_utility(
         learner.candidate_id,
         validation,
@@ -241,7 +301,14 @@ def _train_one_episode(learner, selector, config, smoke):
     return validation, reward
 
 
-def _candidate_record(candidate_id, learner, state, duplicate_of, selected):
+def _candidate_record(
+    candidate_id,
+    learner,
+    state,
+    duplicate_of,
+    selected,
+    final_selection,
+):
     """输出与既有LLM-PPO候选记录兼容的精简字段。"""
     return {
         "candidate_id": candidate_id,
@@ -252,6 +319,8 @@ def _candidate_record(candidate_id, learner, state, duplicate_of, selected):
         "episodes_trained": state.episodes_trained,
         "latest_validation": state.latest_validation,
         "best_validation": state.best_validation,
+        "final_selection_window": final_selection["final_selection_window"],
+        "tail3_validation": final_selection["tail3_validation"],
         "mean_task_reward": state.mean_task_reward,
         "d_hat": state.d_hat,
         "phi": state.phi,
@@ -274,7 +343,7 @@ def run_orso_search(
 ):
     """运行固定奖励集合的ORSO/D3RB搜索；不调用现有多轮LLM-PPO工作流。"""
     config = apply_smoke_overrides(orso_config) if smoke else deepcopy(orso_config)
-    validate_orso_config(config)
+    validate_orso_config(config, allow_smoke_override=smoke)
     output = Path(output_directory)
     if output.exists():
         raise FileExistsError("ORSO搜索目录已存在，拒绝覆盖")
@@ -400,12 +469,20 @@ def run_orso_search(
             config,
             smoke,
         )
-        update = selector.update(candidate_id, task_reward, validation)
+        # 第一圈warmup尚未拥有完整横向观测，禁止其按候选先后触发doubling。
+        enable_misspecification = global_step > candidate_count
+        update = selector.update(
+            candidate_id,
+            task_reward,
+            validation,
+            enable_misspecification=enable_misspecification,
+        )
         _append_jsonl(
             allocation_path,
             {
                 "global_step": global_step,
                 "phase": phase,
+                "misspecification_enabled": enable_misspecification,
                 "candidate_id": candidate_id,
                 "episodes_before": episodes_before,
                 "episodes_after": state.episodes_trained,
@@ -426,11 +503,13 @@ def run_orso_search(
     if any(state.episodes_trained > maximum for state in selector.states.values()):
         raise RuntimeError("ORSO候选训练次数超过配置上限")
 
-    ranking_input = [
-        {"candidate_id": candidate_id, "validation": state.latest_validation}
-        for candidate_id, state in selector.states.items()
-    ]
-    ranked = rank_direct_candidates(ranking_input)
+    ranked, final_selection = _rank_tail_validations(
+        {
+            candidate_id: learner.validation_history
+            for candidate_id, learner in learners.items()
+        },
+        config["final_selection"]["tail_episodes"],
+    )
     selected_candidate_id = ranked[0]["candidate_id"]
     final_rank = {item["candidate_id"]: item["rank"] for item in ranked}
     records = []
@@ -441,6 +520,7 @@ def run_orso_search(
             selector.states[candidate_id],
             duplicate_of[candidate_id],
             candidate_id == selected_candidate_id,
+            final_selection[candidate_id],
         )
         record["final_rank"] = final_rank[candidate_id]
         records.append(record)

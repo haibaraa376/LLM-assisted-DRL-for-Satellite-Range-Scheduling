@@ -9,7 +9,11 @@ from baselines.llm_reward import reward_spec_weights
 from baselines.llm_schema import default_mock_specs
 from orso.config import load_orso_config, validate_orso_config
 from orso.d3rb import D3RBSelector
-from orso.search import _task_utility, build_warmup_schedule
+from orso.search import (
+    _rank_tail_validations,
+    _task_utility,
+    build_warmup_schedule,
+)
 
 
 def _validation(completion):
@@ -65,6 +69,34 @@ def test_d3rb_doubles_regret_coefficient_when_misspecification_triggers():
     assert state.misspecification_count == 1
 
 
+def test_first_warmup_round_defers_misspecification_until_all_candidates_observed():
+    candidate_ids = tuple(
+        "candidate_{0:02d}".format(index)
+        for index in range(1, 9)
+    )
+    selector = D3RBSelector(candidate_ids, 0.1, 0.5, 0.1)
+    for index, candidate_id in enumerate(candidate_ids):
+        result = selector.update(
+            candidate_id,
+            0.9 if candidate_id == "candidate_02" else 0.0,
+            _validation(0.9 if candidate_id == "candidate_02" else 0.0),
+            enable_misspecification=False,
+        )
+        assert result["misspecification_triggered"] is False
+        assert result["confidence_term"] is None
+        assert selector.states[candidate_id].d_hat == pytest.approx(0.1)
+    assert all(state.n == 1 for state in selector.states.values())
+
+    second_round = selector.update(
+        "candidate_01",
+        0.0,
+        _validation(0.0),
+        enable_misspecification=True,
+    )
+    assert second_round["misspecification_triggered"] is True
+    assert selector.states["candidate_01"].d_hat == pytest.approx(0.2)
+
+
 @pytest.mark.parametrize(
     "path,value",
     [
@@ -74,6 +106,7 @@ def test_d3rb_doubles_regret_coefficient_when_misspecification_triggers():
         (("training", "total_candidate_episode_budget"), 1),
         (("training", "max_episodes_per_candidate"), 2),
         (("training", "max_episodes_per_candidate"), 9),
+        (("final_selection", "tail_episodes"), 2),
         (("d3rb", "d_min"), 0.0),
         (("d3rb", "delta"), 0.0),
         (("d3rb", "delta"), 1.0),
@@ -111,6 +144,36 @@ def test_orso_search_protocol_cannot_use_checkpoint_selection_or_test():
     config["training"]["evaluation_protocol"] = "checkpoint_selection"
     with pytest.raises(ValueError, match="reward_search"):
         validate_orso_config(config)
+
+
+def test_final_selection_uses_tail_three_average_not_last_episode():
+    ranked, selection = _rank_tail_validations(
+        {
+            # candidate_01的最后一个Episode更好，但其tail-3均值明显更差。
+            "candidate_01": [
+                _validation(0.1),
+                _validation(0.1),
+                _validation(0.1),
+                _validation(0.99),
+            ],
+            "candidate_02": [
+                _validation(0.6),
+                _validation(0.6),
+                _validation(0.6),
+                _validation(0.8),
+            ],
+        },
+        3,
+    )
+    assert ranked[0]["candidate_id"] == "candidate_02"
+    assert selection["candidate_01"]["tail3_validation"][
+        "completion_rate_mean"
+    ] == pytest.approx((0.1 + 0.1 + 0.99) / 3)
+    assert selection["candidate_02"]["final_selection_window"] == {
+        "start_episode": 2,
+        "end_episode": 4,
+        "size": 3,
+    }
 
 
 def test_orso_uses_existing_direct_llm_reward_semantics():

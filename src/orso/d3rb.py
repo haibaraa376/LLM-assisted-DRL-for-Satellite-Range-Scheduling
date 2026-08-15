@@ -100,8 +100,14 @@ class D3RBSelector:
             ),
         ).candidate_id
 
-    def update(self, candidate_id, task_reward, validation):
-        """执行论文Algorithm 2的观测、misspecification test与phi更新。"""
+    def update(
+        self,
+        candidate_id,
+        task_reward,
+        validation,
+        enable_misspecification=True,
+    ):
+        """更新观测和phi；首轮warmup可显式跳过跨候选失配检验。"""
         if candidate_id not in self.states:
             raise KeyError("未知D3RB候选：{0}".format(candidate_id))
         task_reward = float(task_reward)
@@ -121,21 +127,27 @@ class D3RBSelector:
             state.best_task_reward = task_reward
             state.best_validation = dict(validation)
 
-        # ORSO论文Algorithm 2 / D3RB式(9)：使用更新前的d_hat进行失配检验。
-        confidence_term = self.confidence(state)
-        lhs = (
-            state.mean_task_reward
-            + d_hat_before * math.sqrt(state.n) / state.n
-            + confidence_term
-        )
-        observed = [item for item in self.states.values() if item.n > 0]
-        rhs = max(item.mean_task_reward - self.confidence(item) for item in observed)
-        if not math.isfinite(lhs) or not math.isfinite(rhs):
-            raise ValueError("D3RB misspecification test出现非有限值")
-        triggered = lhs < rhs
-        if triggered:
-            state.d_hat = 2.0 * d_hat_before
-            state.misspecification_count += 1
+        confidence_term = None
+        triggered = False
+        if enable_misspecification:
+            # ORSO论文Algorithm 2 / D3RB式(9)：使用更新前的d_hat进行失配检验。
+            confidence_term = self.confidence(state)
+            lhs = (
+                state.mean_task_reward
+                + d_hat_before * math.sqrt(state.n) / state.n
+                + confidence_term
+            )
+            observed = [item for item in self.states.values() if item.n > 0]
+            rhs = max(
+                item.mean_task_reward - self.confidence(item)
+                for item in observed
+            )
+            if not math.isfinite(lhs) or not math.isfinite(rhs):
+                raise ValueError("D3RB misspecification test出现非有限值")
+            triggered = lhs < rhs
+            if triggered:
+                state.d_hat = 2.0 * d_hat_before
+                state.misspecification_count += 1
         # 论文Algorithm 2第19行：phi = d_hat * sqrt(n)。
         state.phi = state.d_hat * math.sqrt(state.n)
         self._assert_finite_state(state)

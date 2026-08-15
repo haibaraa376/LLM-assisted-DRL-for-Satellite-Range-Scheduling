@@ -22,14 +22,16 @@ orso:
     valid_max: 1.0
 
   d3rb:
-    # 本项目复现补充超参数，可通过orso.yaml修改；d_min与c同设为0.10，
-    # 满足论文附录中d_min不小于confidence multiplier的充分条件。
+    # 本项目复现补充超参数，ORSO论文未公开适用于当前卫星MAPPO场景的对应实验取值。
+    # d_min与c同设为0.10，满足论文附录中d_min不小于confidence multiplier的充分条件。
     d_min: 0.10
-    # 本项目复现补充超参数：0.05对应常用的95%名义置信水平。
+    # 本项目复现补充超参数，ORSO论文未公开适用于当前卫星MAPPO场景的对应实验取值。
+    # 0.05对应常用的95%名义置信水平。
     delta: 0.05
     confidence_constant: 0.10
 
   final_selection:
+    tail_episodes: 3
     metrics:
       - {metric: completion_rate_mean, direction: max}
       - {metric: delivered_data_mbit_mean, direction: max}

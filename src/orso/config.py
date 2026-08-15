@@ -29,7 +29,7 @@ def _finite(value, name, *, positive=False, nonnegative=False):
         raise ValueError("{0}必须为非负数".format(name))
 
 
-def validate_orso_config(config):
+def validate_orso_config(config, allow_smoke_override=False):
     """校验固定候选集、D3RB边界和项目级预算适配。"""
     if config.get("method_name") != "orso":
         raise ValueError("ORSO方法名必须为orso")
@@ -89,6 +89,20 @@ def validate_orso_config(config):
     )
     if metrics != expected_metrics:
         raise ValueError("ORSO最终选择必须为Completion > Delivered Data > Load Balance")
+    _finite(
+        config["final_selection"]["tail_episodes"],
+        "final_selection.tail_episodes",
+        positive=True,
+    )
+    expected_tail = 1 if allow_smoke_override else 3
+    if int(config["final_selection"]["tail_episodes"]) != expected_tail:
+        raise ValueError(
+            "ORSO最终选择必须使用最后{0}个Episode的validation均值".format(
+                expected_tail
+            )
+        )
+    if int(config["final_selection"]["tail_episodes"]) > warmup:
+        raise ValueError("ORSO最终选择窗口不得大于每候选warmup Episode数")
     artifacts = config["artifacts"]
     for name, value in artifacts.items():
         if not isinstance(value, bool):
