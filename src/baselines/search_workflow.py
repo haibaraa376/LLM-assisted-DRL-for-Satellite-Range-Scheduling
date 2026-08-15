@@ -42,7 +42,7 @@ def _candidate_record(result, round_index, candidate_index):
 
 
 def _compact_candidate_artifacts(candidate_dir):
-    """保留可复核的五行曲线和生成规格，删除候选checkpoint及冗余日志。"""
+    """保留候选曲线、Episode日志和生成规格，删除候选checkpoint及冗余日志。"""
     directory = Path(candidate_dir)
     points = json.loads((directory / "learning_curve.json").read_text(encoding="utf-8"))
     fields = ("episode", "completion_rate_mean", "delivered_data_mbit_mean", "load_balance_mean_per_task_mean", "expiration_rate_mean", "delivered_timeliness_raw_mean", "rejected_subaction_rate_mean", "mean_step_reward")
@@ -51,7 +51,7 @@ def _compact_candidate_artifacts(candidate_dir):
         writer.writeheader()
         for point in points:
             writer.writerow({"episode": int(point["episode_index"]) + 1, **{name: point.get(name) for name in fields if name != "episode"}})
-    for name in ("learning_curve.json", "learning_curve.csv", "learning_curve.png", "summary.json", "train_updates.jsonl", "validation.jsonl", "episodes.jsonl", "best_checkpoint.pt", "last_checkpoint.pt"):
+    for name in ("learning_curve.json", "learning_curve.csv", "summary.json", "train_updates.jsonl", "validation.jsonl", "best_checkpoint.pt", "last_checkpoint.pt"):
         path = directory / name
         if path.exists():
             path.unlink()
@@ -61,9 +61,7 @@ def _compact_candidate_artifacts(candidate_dir):
 
 
 def run_reward_search(provider_name, baseline_config, mappo_config, output_directory, rounds, candidates_per_round, candidate_episodes, smoke=False, live_api_approval=None):
-    """所有候选使用相同任务、初始化、MAPPO参数及完整五Episode预算。"""
-    if (int(rounds), int(candidates_per_round), int(candidate_episodes)) != (5, 8, 5) and not smoke:
-        raise ValueError("正式LLM搜索必须为5 rounds × 8 candidates × 5 Episodes")
+    """所有候选使用相同任务、初始化、MAPPO参数及其配置的训练预算。"""
     config, output = deepcopy(baseline_config), Path(output_directory)
     if output.exists():
         raise FileExistsError("LLM搜索目录已存在，拒绝覆盖")

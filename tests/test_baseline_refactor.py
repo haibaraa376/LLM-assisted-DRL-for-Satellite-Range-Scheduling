@@ -25,6 +25,7 @@ from baselines.methods import (
 )
 from baselines.orchestrator import BaselineOrchestrator
 from baselines.reward_spec_registry import register_reward_spec
+from baselines.search_workflow import _compact_candidate_artifacts
 from mappo.manual_reward import ManualReward
 from mappo.training_runner import BaselineTrainingRunner
 
@@ -168,6 +169,34 @@ def test_completed_method_artifacts_are_compact_but_keep_curve_and_checkpoints(t
     )
     assert restored[0]["episode_index"] == 0
     assert restored[0]["completion_rate_mean"] == pytest.approx(0.5)
+
+
+def test_candidate_compaction_keeps_learning_png_and_episode_log(tmp_path):
+    """奖励候选筛选结束后仍应保留可读曲线和逐Episode日志。"""
+    (tmp_path / "learning_curve.json").write_text(
+        json.dumps([{"episode_index": 0, "completion_rate_mean": 0.5}]),
+        encoding="utf-8",
+    )
+    for name in (
+        "learning_curve.png",
+        "episodes.jsonl",
+        "learning_curve.csv",
+        "train_updates.jsonl",
+        "validation.jsonl",
+        "best_checkpoint.pt",
+        "last_checkpoint.pt",
+    ):
+        (tmp_path / name).write_bytes(b"test")
+    (tmp_path / "checkpoints").mkdir()
+
+    _compact_candidate_artifacts(tmp_path)
+
+    assert (tmp_path / "learning_curve.png").is_file()
+    assert (tmp_path / "episodes.jsonl").is_file()
+    assert (tmp_path / "curve.csv").is_file()
+    assert not (tmp_path / "train_updates.jsonl").exists()
+    assert not (tmp_path / "validation.jsonl").exists()
+    assert not (tmp_path / "checkpoints").exists()
 
 
 def test_log_schema_has_explicit_training_reward_and_rejects_invalid_values():

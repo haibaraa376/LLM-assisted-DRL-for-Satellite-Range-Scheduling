@@ -1,0 +1,46 @@
+# ORSO / D3RB 的项目复现配置。环境、MAPPO、任务划分和LLM奖励语义继续复用既有配置。
+orso:
+  method_name: orso
+
+  generation:
+    # ORSO只在搜索开始时生成一次固定候选集，不进行多轮反馈生成。
+    rounds: 1
+    candidates: 8
+
+  training:
+    # 以下是本项目针对Episode级卫星调度的适配，并非论文固定超参数。
+    warmup_episodes_per_candidate: 3
+    allocation_quantum_episodes: 1
+    total_candidate_episode_budget: 80
+    max_episodes_per_candidate: 15
+    evaluation_protocol: reward_search
+
+  task_utility:
+    # D3RB只观察独立任务效用，绝不使用LLM训练奖励或mean_step_reward。
+    primary_metric: completion_rate_mean
+    valid_min: 0.0
+    valid_max: 1.0
+
+  d3rb:
+    # 本项目复现补充超参数，可通过orso.yaml修改；d_min与c同设为0.10，
+    # 满足论文附录中d_min不小于confidence multiplier的充分条件。
+    d_min: 0.10
+    # 本项目复现补充超参数：0.05对应常用的95%名义置信水平。
+    delta: 0.05
+    confidence_constant: 0.10
+
+  final_selection:
+    metrics:
+      - {metric: completion_rate_mean, direction: max}
+      - {metric: delivered_data_mbit_mean, direction: max}
+      - {metric: load_balance_mean_per_task_mean, direction: max}
+
+  artifacts:
+    save_episode_checkpoints: false
+    save_candidate_learning_curve_json: true
+    save_candidate_learning_curve_csv: true
+    save_candidate_learning_curve_png: true
+    save_search_trace: true
+
+  output:
+    root: results/orso
